@@ -1,4 +1,4 @@
-import { Leaf, Sparkles, Home } from "lucide-react-native";
+import { Leaf, Sparkles, Home, User } from "lucide-react-native";
 import PlantDetailScreen from "../features/plants/screens/PlantDetailScreen";
 import PlantListScreen from "../features/plants/screens/PlantListScreen";
 import AddPlantScreen from "../features/plants/screens/AddPlantScreen";
@@ -7,6 +7,8 @@ import BluetoothSetupScreen from "../features/plants/screens/BluetoothSetupScree
 import ManualControlScreen from "../features/plants/screens/ManualControlScreen";
 import ChatScreen from "../features/chat/screens/ChatScreen";
 import HomeScreen from "../features/home/screens/HomeScreen";
+import ProfileScreen from "../features/profile/screens/ProfileScreen";
+import ChangePasswordScreen from "../features/profile/screens/ChangePasswordScreen";
 
 export const HOME_ROUTES = [
   {
@@ -62,6 +64,19 @@ export const CHAT_ROUTES = [
   },
 ];
 
+export const PROFILE_ROUTES = [
+  {
+    name: "ProfileMain",
+    title: "Perfil",
+    component: ProfileScreen,
+  },
+  {
+    name: "ChangePassword",
+    title: "Alterar Senha",
+    component: ChangePasswordScreen,
+  },
+];
+
 export const TAB_ROUTES = [
   {
     name: "HomeTab",
@@ -84,4 +99,11 @@ export const TAB_ROUTES = [
     isStack: true,
     nestedRoutes: CHAT_ROUTES,
   },
+  {
+    name: "ProfileTab",
+    label: "Perfil",
+    icon: User,
+    isStack: true,
+    nestedRoutes: PROFILE_ROUTES,
+  }
 ];
