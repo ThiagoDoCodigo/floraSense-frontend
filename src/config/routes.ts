@@ -1,4 +1,4 @@
-import { Leaf, Sparkles } from "lucide-react-native";
+import { Leaf, Sparkles, Home } from "lucide-react-native";
 import PlantDetailScreen from "../features/plants/screens/PlantDetailScreen";
 import PlantListScreen from "../features/plants/screens/PlantListScreen";
 import AddPlantScreen from "../features/plants/screens/AddPlantScreen";
@@ -66,7 +66,7 @@ export const TAB_ROUTES = [
   {
     name: "HomeTab",
     label: "Início",
-    icon: Sparkles,
+    icon: Home,
     isStack: true,
     nestedRoutes: HOME_ROUTES,
   },
