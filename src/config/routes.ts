@@ -6,6 +6,20 @@ import EditPlantScreen from "../features/plants/screens/EditPlantScreen";
 import BluetoothSetupScreen from "../features/plants/screens/BluetoothSetupScreen";
 import ManualControlScreen from "../features/plants/screens/ManualControlScreen";
 import ChatScreen from "../features/chat/screens/ChatScreen";
+import HomeScreen from "../features/home/screens/HomeScreen";
+
+export const HOME_ROUTES = [
+  {
+    name: "HomeMain",
+    title: "Início",
+    component: HomeScreen,
+  },
+  {
+    name: "AddPlant",
+    title: "Cadastrar Planta",
+    component: AddPlantScreen,
+  },
+];
 
 export const PLANTS_ROUTES = [
   {
@@ -49,6 +63,13 @@ export const CHAT_ROUTES = [
 ];
 
 export const TAB_ROUTES = [
+  {
+    name: "HomeTab",
+    label: "Início",
+    icon: Sparkles,
+    isStack: true,
+    nestedRoutes: HOME_ROUTES,
+  },
   {
     name: "PlantsTab",
     label: "Plantas",
