@@ -1,33 +1,66 @@
-import { Home, Settings, User } from 'lucide-react-native';
-import HomeScreen from '../features/home/screens/HomeScreen';
-import TestScreen from '../features/home/screens/TestScreen';
+import { Leaf, Sparkles } from "lucide-react-native";
+import PlantDetailScreen from "../features/plants/screens/PlantDetailScreen";
+import PlantListScreen from "../features/plants/screens/PlantListScreen";
+import AddPlantScreen from "../features/plants/screens/AddPlantScreen";
+import EditPlantScreen from "../features/plants/screens/EditPlantScreen";
+import BluetoothSetupScreen from "../features/plants/screens/BluetoothSetupScreen";
+import ManualControlScreen from "../features/plants/screens/ManualControlScreen";
+import ChatScreen from "../features/chat/screens/ChatScreen";
 
-export const HOME_ROUTES = [
+export const PLANTS_ROUTES = [
   {
-    name: 'HomeMain',
-    title: 'Início',
-    component: HomeScreen,
+    name: "PlantsMain",
+    title: "Plantas",
+    component: PlantListScreen,
   },
   {
-    name: 'TestStack',
-    title: 'Tela de Teste Interna',
-    component: TestScreen,
+    name: "PlantDetail",
+    title: "Detalhes da Planta",
+    component: PlantDetailScreen,
+  },
+  {
+    name: "AddPlant",
+    title: "Cadastrar Planta",
+    component: AddPlantScreen,
+  },
+  {
+    name: "EditPlant",
+    title: "Editar Planta",
+    component: EditPlantScreen,
+  },
+  {
+    name: "BluetoothSetup",
+    title: "Configuração Bluetooth",
+    component: BluetoothSetupScreen,
+  },
+  {
+    name: "ManualControl",
+    title: "Controle Manual",
+    component: ManualControlScreen,
+  },
+];
+
+export const CHAT_ROUTES = [
+  {
+    name: "ChatMain",
+    title: "Chat",
+    component: ChatScreen,
   },
 ];
 
 export const TAB_ROUTES = [
   {
-    name: 'HomeTab',
-    label: 'Início',
-    icon: Home,
+    name: "PlantsTab",
+    label: "Plantas",
+    icon: Leaf,
     isStack: true,
-    nestedRoutes: HOME_ROUTES,
+    nestedRoutes: PLANTS_ROUTES,
   },
   {
-    name: 'ProfileTab',
-    label: 'Perfil',
-    icon: User,
+    name: "ChatTab",
+    label: "Chat IA",
+    icon: Sparkles,
     isStack: true,
-    nestedRoutes: HOME_ROUTES
+    nestedRoutes: CHAT_ROUTES,
   },
 ];

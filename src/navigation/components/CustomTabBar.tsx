@@ -1,14 +1,14 @@
-import { useRef, useEffect } from 'react';
-import { View, Animated, StyleSheet, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from 'react-native-th-components';
-import { TAB_ROUTES } from '../../config/routes';
-import { TabItem } from './TabItem';
+import { useRef, useEffect } from "react";
+import { View, Animated, StyleSheet, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { colors } from "react-native-th-components";
+import { TAB_ROUTES } from "../../config/routes";
+import { TabItem } from "./TabItem";
 
 export function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  
+
   const tabWidth = width / state.routes.length;
   const translateX = useRef(new Animated.Value(state.index * tabWidth)).current;
 
@@ -22,14 +22,24 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
   }, [state.index, tabWidth]);
 
   return (
-    <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      <Animated.View 
+    <View
+      style={[
+        styles.tabBarContainer,
+        { paddingBottom: Math.max(insets.bottom, 8) },
+      ]}
+    >
+      <Animated.View
         style={[
-          styles.slidingIndicatorContainer, 
-          { width: tabWidth, transform: [{ translateX }] }
+          styles.slidingIndicatorContainer,
+          { width: tabWidth, transform: [{ translateX }] },
         ]}
       >
-        <View style={[styles.activeIndicator, { backgroundColor: colors.primary.main }]} />
+        <View
+          style={[
+            styles.activeIndicator,
+            { backgroundColor: colors.primary.main },
+          ]}
+        />
       </Animated.View>
 
       {state.routes.map((route: any, index: number) => {
@@ -40,7 +50,7 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
 
         const onPress = () => {
           const event = navigation.emit({
-            type: 'tabPress',
+            type: "tabPress",
             target: route.key,
             canPreventDefault: true,
           });
@@ -66,27 +76,27 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
 
 const styles = StyleSheet.create({
   tabBarContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 8,
-    position: 'relative',
+    position: "relative",
   },
   slidingIndicatorContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: -1,
     height: 3,
-    alignItems: 'center',
+    alignItems: "center",
     zIndex: 1,
   },
   activeIndicator: {
-    width: '40%',
-    height: '100%',
+    width: "40%",
+    height: "100%",
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
   },

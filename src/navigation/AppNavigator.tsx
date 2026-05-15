@@ -1,6 +1,6 @@
-import { createStackNavigator } from '@react-navigation/stack';
-import { AuthRoutes } from './navigators/AuthRoutes';
-import { MainTabs } from './navigators/MainTabs';
+import { createStackNavigator } from "@react-navigation/stack";
+import { AuthRoutes } from "./navigators/AuthRoutes";
+import { MainTabs } from "./navigators/MainTabs";
 
 const RootStack = createStackNavigator();
 

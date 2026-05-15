@@ -1,40 +1,73 @@
-import { useState, useEffect } from 'react';
-import authService from '../services/auth.service';
+import { useState, useEffect } from "react";
+import authService from "../services/auth.service";
 
 export class AuthViewModel {
-  private _name = '';
-  private _email = '';
-  private _password = '';
-  private _confirmPassword = '';
-  
-  private _error = '';
-  private _success = '';
-  private _fieldErrors: { name?: string; email?: string; password?: string; confirmPassword?: string } = {};
+  private _name = "";
+  private _email = "";
+  private _password = "";
+  private _confirmPassword = "";
+
+  private _error = "";
+  private _success = "";
+  private _fieldErrors: {
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  } = {};
 
   private setNameCallback: ((n: string) => void) | null = null;
   private setEmailCallback: ((e: string) => void) | null = null;
   private setPasswordCallback: ((p: string) => void) | null = null;
   private setConfirmPasswordCallback: ((cp: string) => void) | null = null;
-  
+
   private setErrorCallback: ((err: string) => void) | null = null;
   private setSuccessCallback: ((msg: string) => void) | null = null;
   private setFieldErrorsCallback: ((errors: any) => void) | null = null;
 
-  get name() { return this._name; }
-  get email() { return this._email; }
-  get password() { return this._password; }
-  get confirmPassword() { return this._confirmPassword; }
-  get error() { return this._error; }
-  get success() { return this._success; }
-  get fieldErrors() { return this._fieldErrors; }
+  get name() {
+    return this._name;
+  }
+  get email() {
+    return this._email;
+  }
+  get password() {
+    return this._password;
+  }
+  get confirmPassword() {
+    return this._confirmPassword;
+  }
+  get error() {
+    return this._error;
+  }
+  get success() {
+    return this._success;
+  }
+  get fieldErrors() {
+    return this._fieldErrors;
+  }
 
-  setNameListener(cb: any) { this.setNameCallback = cb; }
-  setEmailListener(cb: any) { this.setEmailCallback = cb; }
-  setPasswordListener(cb: any) { this.setPasswordCallback = cb; }
-  setConfirmPasswordListener(cb: any) { this.setConfirmPasswordCallback = cb; }
-  setErrorListener(cb: any) { this.setErrorCallback = cb; }
-  setSuccessListener(cb: any) { this.setSuccessCallback = cb; }
-  setFieldErrorsListener(cb: any) { this.setFieldErrorsCallback = cb; }
+  setNameListener(cb: any) {
+    this.setNameCallback = cb;
+  }
+  setEmailListener(cb: any) {
+    this.setEmailCallback = cb;
+  }
+  setPasswordListener(cb: any) {
+    this.setPasswordCallback = cb;
+  }
+  setConfirmPasswordListener(cb: any) {
+    this.setConfirmPasswordCallback = cb;
+  }
+  setErrorListener(cb: any) {
+    this.setErrorCallback = cb;
+  }
+  setSuccessListener(cb: any) {
+    this.setSuccessCallback = cb;
+  }
+  setFieldErrorsListener(cb: any) {
+    this.setFieldErrorsCallback = cb;
+  }
 
   setName(n: string) {
     this._name = n;
@@ -73,22 +106,22 @@ export class AuthViewModel {
   }
 
   clearMessages() {
-    this._error = '';
-    this._success = '';
+    this._error = "";
+    this._success = "";
     this._fieldErrors = {};
-    this.setErrorCallback?.('');
-    this.setSuccessCallback?.('');
+    this.setErrorCallback?.("");
+    this.setSuccessCallback?.("");
     this.setFieldErrorsCallback?.({});
   }
 
   clearError() {
-    this._error = '';
-    this.setErrorCallback?.('');
+    this._error = "";
+    this.setErrorCallback?.("");
   }
 
   clearSuccess() {
-    this._success = '';
-    this.setSuccessCallback?.('');
+    this._success = "";
+    this.setSuccessCallback?.("");
   }
 
   private isValidEmail(email: string): boolean {
@@ -113,7 +146,7 @@ export class AuthViewModel {
     if (Object.keys(errors).length > 0) {
       this._fieldErrors = errors;
       this.setFieldErrorsCallback?.(errors);
-      throw new Error("Verifique os campos destacados."); 
+      throw new Error("Verifique os campos destacados.");
     }
 
     try {
@@ -140,7 +173,7 @@ export class AuthViewModel {
       this.setFieldErrorsCallback?.(errors);
       throw new Error("Verifique os campos destacados.");
     }
-    
+
     try {
       const res = await authService.recoverPassword(this._email);
       this._success = res.message || "Link enviado com sucesso!";
@@ -154,7 +187,12 @@ export class AuthViewModel {
 
   async performRegister(): Promise<void> {
     this.clearMessages();
-    const errors: { name?: string; email?: string; password?: string; confirmPassword?: string } = {};
+    const errors: {
+      name?: string;
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+    } = {};
 
     if (!this._name || this._name.trim().length < 3) {
       errors.name = "Insira seu nome completo.";
@@ -199,8 +237,10 @@ export const useAuthViewModel = () => {
   const [name, setName] = useState(viewModel.name);
   const [email, setEmail] = useState(viewModel.email);
   const [password, setPassword] = useState(viewModel.password);
-  const [confirmPassword, setConfirmPassword] = useState(viewModel.confirmPassword);
-  
+  const [confirmPassword, setConfirmPassword] = useState(
+    viewModel.confirmPassword,
+  );
+
   const [error, setError] = useState(viewModel.error);
   const [success, setSuccess] = useState(viewModel.success);
   const [fieldErrors, setFieldErrors] = useState(viewModel.fieldErrors);
@@ -210,11 +250,20 @@ export const useAuthViewModel = () => {
     viewModel.setEmailListener(setEmail);
     viewModel.setPasswordListener(setPassword);
     viewModel.setConfirmPasswordListener(setConfirmPassword);
-    
+
     viewModel.setErrorListener(setError);
     viewModel.setSuccessListener(setSuccess);
     viewModel.setFieldErrorsListener(setFieldErrors);
   }, [viewModel]);
 
-  return { viewModel, name, email, password, confirmPassword, error, success, fieldErrors };
+  return {
+    viewModel,
+    name,
+    email,
+    password,
+    confirmPassword,
+    error,
+    success,
+    fieldErrors,
+  };
 };

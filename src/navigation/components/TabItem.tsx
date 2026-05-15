@@ -1,6 +1,6 @@
-import { useRef } from 'react';
-import { Animated, Pressable, Text, StyleSheet } from 'react-native';
-import { colors } from 'react-native-th-components';
+import { useRef } from "react";
+import { Animated, Pressable, Text, StyleSheet } from "react-native";
+import { colors } from "react-native-th-components";
 
 export function TabItem({ isFocused, onPress, Icon, label }: any) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -28,21 +28,23 @@ export function TabItem({ isFocused, onPress, Icon, label }: any) {
       onPressOut={handlePressOut}
       style={styles.tabItem}
     >
-      <Animated.View style={{ transform: [{ scale: scaleAnim }], alignItems: 'center' }}>
+      <Animated.View
+        style={{ transform: [{ scale: scaleAnim }], alignItems: "center" }}
+      >
         {Icon && (
-          <Icon 
-            size={22} 
-            color={isFocused ? colors.primary.main : colors.text.muted} 
+          <Icon
+            size={22}
+            color={isFocused ? colors.primary.main : colors.text.muted}
             style={{ marginBottom: 4 }}
           />
         )}
-        <Text 
+        <Text
           style={[
-            styles.tabLabel, 
-            { 
+            styles.tabLabel,
+            {
               color: isFocused ? colors.primary.main : colors.text.muted,
-              fontWeight: isFocused ? '600' : '400'
-            }
+              fontWeight: isFocused ? "600" : "400",
+            },
           ]}
         >
           {label}
@@ -55,11 +57,11 @@ export function TabItem({ isFocused, onPress, Icon, label }: any) {
 const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingTop: 12,
   },
   tabLabel: {
     fontSize: 11,
-  }
+  },
 });

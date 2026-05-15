@@ -1,6 +1,8 @@
-import MainLayout from '../MainLayout';
+import MainLayout from "../MainLayout";
 
-export default function WithMainLayout(WrappedComponent: React.ComponentType<any>) {
+export default function WithMainLayout(
+  WrappedComponent: React.ComponentType<any>,
+) {
   return function EnhancedComponent(props: any) {
     return (
       <MainLayout>

@@ -1,13 +1,13 @@
-import 'react-native-gesture-handler';
-import React from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NavigationContainer } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import AppNavigator from './src/navigation/AppNavigator';
-import { configureTheme } from 'react-native-th-components'
+import "react-native-gesture-handler";
+import React from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { NavigationContainer } from "@react-navigation/native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import AppNavigator from "./src/navigation/AppNavigator";
+import { configureTheme } from "react-native-th-components";
 
 configureTheme({
-  themeName: 'default', 
+  themeName: "default",
 });
 
 /* 
@@ -20,7 +20,10 @@ configureTheme({
 });
 */
 
-import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from "react-native-reanimated";
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
