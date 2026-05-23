@@ -1,54 +1,50 @@
-import type { AuthUser } from "../models/auth.model";
+import { floraSenseApi, STORAGE_KEYS } from '../../../services/floraSenseApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { 
+  AuthUserResponseDTO, 
+  LoginRequestDTO, 
+  AuthResponseDTO,
+  PublicCreateUserDTO 
+} from '../models/auth.model';
 
 class AuthService {
-  async login(
-    email: string,
-    password?: string,
-  ): Promise<{ user: AuthUser; token: string }> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (email === "admin@flora.com" && password === "123456") {
-          resolve({
-            user: { id: "1", name: "Admin", email },
-            token: "mock-jwt-token",
-          });
-        } else {
-          reject(
-            new Error("Credenciais inválidas. Tente admin@flora.com / 123456"),
-          );
-        }
-      }, 1500);
-    });
+  async login(data: LoginRequestDTO): Promise<AuthUserResponseDTO> {
+    const response = await floraSenseApi.post<AuthResponseDTO>('/auth/login', data);
+    
+    await AsyncStorage.multiSet([
+      [STORAGE_KEYS.ACCESS_TOKEN, response.data.tokens.accessToken],
+      [STORAGE_KEYS.REFRESH_TOKEN, response.data.tokens.refreshToken],
+      [STORAGE_KEYS.USER, JSON.stringify(response.data.user)]
+    ]);
+
+    return response.data.user;
+  }
+
+  async register(data: PublicCreateUserDTO): Promise<AuthUserResponseDTO> {
+    await floraSenseApi.post('/users/public', data);
+    return await this.login({ email: data.email, password: data.password });
   }
 
   async recoverPassword(email: string): Promise<{ message: string }> {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        if (email === "admin@flora.com") {
-          resolve({
-            message: "Um link de recuperação foi enviado para o seu e-mail.",
-          });
-        } else {
-          reject(new Error("E-mail não encontrado em nossa base de dados."));
-        }
-      }, 1500);
+        if (!email) reject(new Error("Email é obrigatório"));
+        resolve({ message: "Se o e-mail existir, você receberá um link de recuperação." });
+      }, 1000);
     });
   }
 
-  async register(
-    name: string,
-    email: string,
-    password: string,
-  ): Promise<{ user: AuthUser; token: string }> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (email === "admin@flora.com") {
-          reject(new Error("Este e-mail já está em uso."));
-        } else {
-          resolve({ user: { id: "2", name, email }, token: "mock-jwt-token" });
-        }
-      }, 1500);
-    });
+  async logout(): Promise<void> {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.ACCESS_TOKEN, 
+      STORAGE_KEYS.REFRESH_TOKEN, 
+      STORAGE_KEYS.USER
+    ]);
+  }
+
+  async getStoredUser(): Promise<AuthUserResponseDTO | null> {
+    const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+    return userStr ? JSON.parse(userStr) : null;
   }
 }
 

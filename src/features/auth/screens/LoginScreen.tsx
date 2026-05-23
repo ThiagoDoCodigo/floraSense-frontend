@@ -17,27 +17,25 @@ const imageFlora = require("../../../../assets/florasense.png");
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
-  const { viewModel, email, password, error, fieldErrors } = useAuthViewModel();
+  const {
+    email, setEmail,
+    password, setPassword,
+    globalError, clearMessages, fieldErrors,
+    performLogin, isProcessing
+  } = useAuthViewModel();
 
   const handleLogin = async () => {
-    try {
-      await viewModel.performLogin();
-      setTimeout(() => {
-        navigation.reset({ index: 0, routes: [{ name: "MainFlow" }] });
-      }, 1000);
-    } catch (e) {
-      throw error;
-    }
+    await performLogin();
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {error ? (
+      {globalError ? (
         <AlertMessage
           title="Erro de Autenticação"
-          message={error}
+          message={globalError}
           type="error"
-          onClose={() => viewModel.clearError()}
+          onClose={clearMessages}
         />
       ) : null}
 
@@ -55,10 +53,11 @@ export default function LoginScreen() {
           icon={Mail}
           placeholder="exemplo@flora.com"
           value={email}
-          onChangeText={(text) => viewModel.setEmail(text)}
+          onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
           error={fieldErrors.email}
+          editable={!isProcessing}
         />
 
         <InputField
@@ -66,14 +65,16 @@ export default function LoginScreen() {
           icon={Lock}
           placeholder="••••••••"
           value={password}
-          onChangeText={(text) => viewModel.setPassword(text)}
+          onChangeText={setPassword}
           secureTextEntry
           error={fieldErrors.password}
+          editable={!isProcessing}
         />
 
         <TouchableOpacity
           onPress={() => navigation.navigate("Recover")}
           style={styles.forgotPassword}
+          disabled={isProcessing}
         >
           <Typography
             variant="caption"
@@ -87,14 +88,14 @@ export default function LoginScreen() {
 
       <View style={styles.footer}>
         <ActionButton
-          label="Entrar na Plataforma"
+          label={isProcessing ? "Autenticando..." : "Entrar na Plataforma"}
           onPress={handleLogin}
           iconPosition="right"
-          errorLabel="Erro ao efetuar login"
         />
         <TouchableOpacity
           onPress={() => navigation.navigate("Register")}
           style={styles.registerLink}
+          disabled={isProcessing}
         >
           <Typography variant="body" align="center">
             Não possui conta?{" "}

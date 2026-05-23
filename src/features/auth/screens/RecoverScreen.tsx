@@ -16,36 +16,38 @@ import { useAuthViewModel } from "../viewModel/auth.viewModel";
 
 export default function RecoverScreen() {
   const navigation = useNavigation<any>();
-  const { viewModel, email, error, success, fieldErrors } = useAuthViewModel();
+  const {
+    email, setEmail,
+    globalError, globalSuccess, clearMessages, fieldErrors,
+    performRecover, isProcessing
+  } = useAuthViewModel();
 
   const handleRecover = async () => {
-    try {
-      await viewModel.performRecover();
+    const success = await performRecover();
+    if (success) {
       setTimeout(() => {
         navigation.goBack();
       }, 2500);
-    } catch (e) {
-      throw error;
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {error ? (
+      {globalError ? (
         <AlertMessage
           title="Erro"
-          message={error}
+          message={globalError}
           type="error"
-          onClose={() => viewModel.clearError()}
+          onClose={clearMessages}
         />
       ) : null}
 
-      {success ? (
+      {globalSuccess ? (
         <AlertMessage
           title="Tudo certo!"
-          message={success}
+          message={globalSuccess}
           type="success"
-          onClose={() => viewModel.clearSuccess()}
+          onClose={clearMessages}
         />
       ) : null}
 
@@ -68,18 +70,17 @@ export default function RecoverScreen() {
           icon={Mail}
           placeholder="exemplo@flora.com"
           value={email}
-          onChangeText={(text) => viewModel.setEmail(text)}
+          onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
           error={fieldErrors.email}
+          editable={!isProcessing}
         />
       </View>
 
       <View style={styles.footer}>
         <ActionButton
-          label="Enviar Instruções"
-          loadingLabel="Enviando e-mail..."
-          successLabel="Link Enviado!"
+          label={isProcessing ? "Enviando e-mail..." : "Enviar Instruções"}
           onPress={handleRecover}
           iconPosition="right"
         />
@@ -87,6 +88,7 @@ export default function RecoverScreen() {
           variant="outline"
           label="Cancelar e voltar"
           onPress={() => navigation.goBack()}
+          disabled={isProcessing}
         />
       </View>
     </SafeAreaView>

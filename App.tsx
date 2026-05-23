@@ -5,6 +5,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { configureTheme } from "react-native-th-components";
+import { AuthProvider } from "./src/contexts/AuthContext";
 
 configureTheme({
   themeName: "default",
@@ -34,7 +35,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <NavigationContainer>
-          <AppNavigator />
+          <AuthProvider>
+            <AppNavigator />
+          </AuthProvider>
         </NavigationContainer>
       </SafeAreaProvider>
     </GestureHandlerRootView>

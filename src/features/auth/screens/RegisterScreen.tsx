@@ -16,34 +16,25 @@ import { useAuthViewModel } from "../viewModel/auth.viewModel";
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
   const {
-    viewModel,
-    name,
-    email,
-    password,
-    confirmPassword,
-    error,
-    fieldErrors,
+    name, setName,
+    email, setEmail,
+    password, setPassword,
+    globalError, fieldErrors, clearMessages,
+    performRegister, isProcessing
   } = useAuthViewModel();
 
   const handleRegister = async () => {
-    try {
-      await viewModel.performRegister();
-      setTimeout(() => {
-        navigation.reset({ index: 0, routes: [{ name: "MainFlow" }] });
-      }, 1000);
-    } catch (e) {
-      throw error;
-    }
+    await performRegister();
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {error ? (
+      {globalError ? (
         <AlertMessage
           title="Erro no Cadastro"
-          message={error}
+          message={globalError}
           type="error"
-          onClose={() => viewModel.clearError()}
+          onClose={clearMessages}
         />
       ) : null}
 
@@ -63,9 +54,10 @@ export default function RegisterScreen() {
           icon={User}
           placeholder="Ex: João da Silva"
           value={name}
-          onChangeText={(text) => viewModel.setName(text)}
+          onChangeText={setName}
           autoCapitalize="words"
           error={fieldErrors.name}
+          editable={!isProcessing}
         />
 
         <InputField
@@ -73,10 +65,11 @@ export default function RegisterScreen() {
           icon={Mail}
           placeholder="exemplo@flora.com"
           value={email}
-          onChangeText={(text) => viewModel.setEmail(text)}
+          onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
           error={fieldErrors.email}
+          editable={!isProcessing}
         />
 
         <InputField
@@ -84,28 +77,24 @@ export default function RegisterScreen() {
           icon={Lock}
           placeholder="Mínimo de 6 caracteres"
           value={password}
-          onChangeText={(text) => viewModel.setPassword(text)}
+          onChangeText={setPassword}
           secureTextEntry
           error={fieldErrors.password}
+          editable={!isProcessing}
         />
 
         <InputField
           label="Confirmar Senha *"
           icon={Lock}
           placeholder="Repita sua senha"
-          value={confirmPassword}
-          onChangeText={(text) => viewModel.setConfirmPassword(text)}
           secureTextEntry
-          error={fieldErrors.confirmPassword}
+          editable={!isProcessing}
         />
       </ScrollView>
 
       <View style={styles.footer}>
         <ActionButton
-          label="Finalizar Cadastro"
-          loadingLabel="Criando conta..."
-          successLabel="Bem-vindo!"
-          errorLabel="Erro ao criar conta"
+          label={isProcessing ? "Criando conta..." : "Finalizar Cadastro"}
           onPress={handleRegister}
           iconPosition="right"
         />
@@ -114,6 +103,7 @@ export default function RegisterScreen() {
           variant="outline"
           label="Voltar para o Login"
           onPress={() => navigation.goBack()}
+          disabled={isProcessing}
         />
       </View>
     </SafeAreaView>
