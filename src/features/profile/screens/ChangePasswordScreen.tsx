@@ -3,7 +3,6 @@ import { useNavigation } from "@react-navigation/native";
 import { KeyRound, Lock, ArrowLeft, KeyRoundIcon } from "lucide-react-native";
 
 import {
-  Header,
   InputField,
   ActionButton,
   Button,
@@ -55,12 +54,6 @@ export default function ChangePasswordScreen() {
           onClose={() => viewModel.clearSuccess()}
         />
       ) : null}
-
-      <Header
-        title="Alterar Senha"
-        subtitle="Crie uma nova senha segura"
-        icon={KeyRound}
-      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -130,7 +123,7 @@ export default function ChangePasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, paddingTop: 16 },
   scrollContent: { paddingBottom: 24 },
   infoBox: {
     backgroundColor: colors.surfaceHighlight,

@@ -2,9 +2,9 @@ import {
   createStackNavigator,
   TransitionPresets,
 } from "@react-navigation/stack";
-import { TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
-import { colors } from "react-native-th-components";
+import { colors, Typography } from "react-native-th-components";
 import { TAB_ROUTES } from "../../config/routes";
 import WithMainLayout from "../../layouts/helper/WithMainLayout";
 
@@ -22,9 +22,7 @@ const createNestedStack = (routes: any[]) => {
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
           },
-          headerTitleAlign: "center",
           headerTintColor: colors.text.primary,
-          headerTitleStyle: { fontWeight: "bold", fontSize: 16 },
           ...TransitionPresets.SlideFromRightIOS,
         }}
       >
@@ -34,7 +32,36 @@ const createNestedStack = (routes: any[]) => {
             name={route.name}
             component={WithMainLayout(route.component)}
             options={({ navigation }: any) => ({
-              title: route.title,
+              headerTitleAlign: index === 0 ? "left" : "center",
+              headerTitle: () => (
+                <View style={[styles.customHeaderContainer]}>
+                  {route.icon && (
+                    <View style={styles.headerIconBg}>
+                      <route.icon size={20} color={colors.primary.main} />
+                    </View>
+                  )}
+                  <View style={{ justifyContent: "center" }}>
+                    <Typography
+                      variant="body"
+                      weight="bold"
+                      color={colors.text.primary}
+                      style={{ lineHeight: 18 }}
+                    >
+                      {route.title}
+                    </Typography>
+
+                    {route.subtitle && (
+                      <Typography
+                        variant="caption"
+                        color={colors.text.secondary}
+                        style={{ fontSize: 11, lineHeight: 14 }}
+                      >
+                        {route.subtitle}
+                      </Typography>
+                    )}
+                  </View>
+                </View>
+              ),
               headerLeft: () =>
                 index === 0 ? null : (
                   <TouchableOpacity
@@ -65,10 +92,21 @@ TAB_ROUTES.forEach((route) => {
 const styles = StyleSheet.create({
   headerButton: {
     marginLeft: 16,
+    marginRight: 8,
     padding: 8,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
+  },
+  customHeaderContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerIconBg: {
+    backgroundColor: colors.primary.faded,
+    padding: 8,
+    borderRadius: 8,
+    marginRight: 10,
   },
 });

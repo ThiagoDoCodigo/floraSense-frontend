@@ -18,7 +18,6 @@ import {
 } from "lucide-react-native";
 
 import {
-  Header,
   InputField,
   ActionButton,
   Typography,
@@ -67,12 +66,6 @@ export default function ProfileScreen() {
           onClose={() => viewModel.clearSuccess()}
         />
       ) : null}
-
-      <Header
-        title="Meu Perfil"
-        subtitle="Gerencie sua conta e segurança"
-        icon={User}
-      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
