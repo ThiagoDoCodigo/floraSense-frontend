@@ -1,6 +1,16 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import authService from '../features/auth/services/auth.service';
-import type { AuthUserResponseDTO, LoginRequestDTO, PublicCreateUserDTO } from '../features/auth/models/auth.model';
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  ReactNode,
+} from "react";
+import authService from "../features/auth/services/auth.service";
+import type {
+  AuthUserResponseDTO,
+  LoginRequestDTO,
+  PublicCreateUserDTO,
+} from "../features/auth/models/auth.model";
 
 interface AuthContextData {
   user: AuthUserResponseDTO | null;

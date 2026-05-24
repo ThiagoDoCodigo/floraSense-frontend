@@ -16,11 +16,17 @@ import { useAuthViewModel } from "../viewModel/auth.viewModel";
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
   const {
-    name, setName,
-    email, setEmail,
-    password, setPassword,
-    globalError, fieldErrors, clearMessages,
-    performRegister, isProcessing
+    name,
+    setName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    globalError,
+    fieldErrors,
+    clearMessages,
+    performRegister,
+    isProcessing,
   } = useAuthViewModel();
 
   const handleRegister = async () => {

@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import authService from '../services/auth.service';
+import { useState, useCallback } from "react";
+import { useAuth } from "../../../contexts/AuthContext";
+import authService from "../services/auth.service";
 
 interface AuthFormErrors {
   email?: string;
@@ -10,19 +10,19 @@ interface AuthFormErrors {
 
 export const useAuthViewModel = () => {
   const { signIn, signUp } = useAuth();
-  
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  const [globalError, setGlobalError] = useState('');
-  const [globalSuccess, setGlobalSuccess] = useState('');
+
+  const [globalError, setGlobalError] = useState("");
+  const [globalSuccess, setGlobalSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState<AuthFormErrors>({});
 
   const clearMessages = useCallback(() => {
-    setGlobalError('');
-    setGlobalSuccess('');
+    setGlobalError("");
+    setGlobalSuccess("");
     setFieldErrors({});
   }, []);
 
@@ -32,9 +32,9 @@ export const useAuthViewModel = () => {
     clearMessages();
     const errors: AuthFormErrors = {};
 
-    if (!email.trim()) errors.email = 'O e-mail é obrigatório.';
-    else if (!isValidEmail(email)) errors.email = 'Formato inválido.';
-    if (!password) errors.password = 'A senha é obrigatória.';
+    if (!email.trim()) errors.email = "O e-mail é obrigatório.";
+    else if (!isValidEmail(email)) errors.email = "Formato inválido.";
+    if (!password) errors.password = "A senha é obrigatória.";
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -47,7 +47,7 @@ export const useAuthViewModel = () => {
       return true;
     } catch (err: any) {
       console.log("ERRO AXIOS:", err.message);
-      setGlobalError(err.response?.data?.message || 'Falha na autenticação.');
+      setGlobalError(err.response?.data?.message || "Falha na autenticação.");
       return false;
     } finally {
       setIsProcessing(false);
@@ -58,10 +58,12 @@ export const useAuthViewModel = () => {
     clearMessages();
     const errors: AuthFormErrors = {};
 
-    if (!name.trim() || name.length < 3) errors.name = 'Insira seu nome completo.';
-    if (!email.trim()) errors.email = 'O e-mail é obrigatório.';
-    else if (!isValidEmail(email)) errors.email = 'Formato inválido.';
-    if (!password || password.length < 6) errors.password = 'Mínimo de 6 caracteres.';
+    if (!name.trim() || name.length < 3)
+      errors.name = "Insira seu nome completo.";
+    if (!email.trim()) errors.email = "O e-mail é obrigatório.";
+    else if (!isValidEmail(email)) errors.email = "Formato inválido.";
+    if (!password || password.length < 6)
+      errors.password = "Mínimo de 6 caracteres.";
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -73,7 +75,7 @@ export const useAuthViewModel = () => {
       await signUp({ name: name.trim(), email: email.trim(), password });
       return true;
     } catch (err: any) {
-      setGlobalError(err.response?.data?.message || 'Falha ao criar conta.');
+      setGlobalError(err.response?.data?.message || "Falha ao criar conta.");
       return false;
     } finally {
       setIsProcessing(false);
@@ -83,7 +85,7 @@ export const useAuthViewModel = () => {
   const performRecover = async (): Promise<boolean> => {
     clearMessages();
     if (!email.trim() || !isValidEmail(email)) {
-      setFieldErrors({ email: 'Insira um e-mail válido para recuperação.' });
+      setFieldErrors({ email: "Insira um e-mail válido para recuperação." });
       return false;
     }
 
@@ -93,7 +95,7 @@ export const useAuthViewModel = () => {
       setGlobalSuccess(res.message);
       return true;
     } catch (err: any) {
-      setGlobalError(err.message || 'Erro ao solicitar recuperação.');
+      setGlobalError(err.message || "Erro ao solicitar recuperação.");
       return false;
     } finally {
       setIsProcessing(false);
@@ -101,10 +103,19 @@ export const useAuthViewModel = () => {
   };
 
   return {
-    name, setName,
-    email, setEmail,
-    password, setPassword,
-    isProcessing, globalError, globalSuccess, fieldErrors,
-    performLogin, performRegister, performRecover, clearMessages
+    name,
+    setName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    isProcessing,
+    globalError,
+    globalSuccess,
+    fieldErrors,
+    performLogin,
+    performRegister,
+    performRecover,
+    clearMessages,
   };
 };

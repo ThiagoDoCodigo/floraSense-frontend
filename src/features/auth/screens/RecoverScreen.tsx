@@ -17,9 +17,14 @@ import { useAuthViewModel } from "../viewModel/auth.viewModel";
 export default function RecoverScreen() {
   const navigation = useNavigation<any>();
   const {
-    email, setEmail,
-    globalError, globalSuccess, clearMessages, fieldErrors,
-    performRecover, isProcessing
+    email,
+    setEmail,
+    globalError,
+    globalSuccess,
+    clearMessages,
+    fieldErrors,
+    performRecover,
+    isProcessing,
   } = useAuthViewModel();
 
   const handleRecover = async () => {

@@ -1,19 +1,23 @@
-import axios, { InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios, {
+  InternalAxiosRequestConfig,
+  AxiosError,
+  AxiosResponse,
+} from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = 'http://localhost:3000/api/v1';
+const API_URL = "http://localhost:3000/api/v1";
 
 export const floraSenseApi = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 export const STORAGE_KEYS = {
-  USER: '@FloraSense:user',
-  ACCESS_TOKEN: '@FloraSense:accessToken',
-  REFRESH_TOKEN: '@FloraSense:refreshToken',
+  USER: "@FloraSense:user",
+  ACCESS_TOKEN: "@FloraSense:accessToken",
+  REFRESH_TOKEN: "@FloraSense:refreshToken",
 };
 
 floraSenseApi.interceptors.request.use(
@@ -24,7 +28,7 @@ floraSenseApi.interceptors.request.use(
     }
     return config;
   },
-  (error: AxiosError) => Promise.reject(error)
+  (error: AxiosError) => Promise.reject(error),
 );
 
 let isRefreshing = false;
@@ -33,7 +37,10 @@ let failedQueue: Array<{
   reject: (reason?: any) => void;
 }> = [];
 
-const processQueue = (error: AxiosError | null, token: string | null = null) => {
+const processQueue = (
+  error: AxiosError | null,
+  token: string | null = null,
+) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -47,7 +54,9 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
 floraSenseApi.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -67,13 +76,23 @@ floraSenseApi.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-        if (!refreshToken) throw new Error('Refresh token não encontrado');
+        const refreshToken = await AsyncStorage.getItem(
+          STORAGE_KEYS.REFRESH_TOKEN,
+        );
+        if (!refreshToken) throw new Error("Refresh token não encontrado");
 
-        const { data } = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
-        
-        await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.tokens.accessToken);
-        await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refreshToken);
+        const { data } = await axios.post(`${API_URL}/auth/refresh`, {
+          refreshToken,
+        });
+
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.ACCESS_TOKEN,
+          data.tokens.accessToken,
+        );
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.REFRESH_TOKEN,
+          data.tokens.refreshToken,
+        );
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${data.tokens.accessToken}`;
@@ -91,5 +110,5 @@ floraSenseApi.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );

@@ -18,10 +18,15 @@ const imageFlora = require("../../../../assets/florasense.png");
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
   const {
-    email, setEmail,
-    password, setPassword,
-    globalError, clearMessages, fieldErrors,
-    performLogin, isProcessing
+    email,
+    setEmail,
+    password,
+    setPassword,
+    globalError,
+    clearMessages,
+    fieldErrors,
+    performLogin,
+    isProcessing,
   } = useAuthViewModel();
 
   const handleLogin = async () => {
