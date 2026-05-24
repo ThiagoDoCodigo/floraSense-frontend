@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
@@ -304,13 +305,11 @@ export default function HomeScreen() {
             onEndReachedThreshold={0.2}
             ListFooterComponent={
               loadingModal ? (
-                <View style={{ padding: 20 }}>
-                  <LoadingIndicator
-                    fullScreen={false}
-                    message="Buscando mais alertas..."
-                    subMessage=""
-                  />
-                </View>
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary.main}
+                  style={{ margin: 16 }}
+                />
               ) : null
             }
           />
