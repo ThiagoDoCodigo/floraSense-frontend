@@ -26,6 +26,7 @@ import type { DashboardAlert } from "../models/home.model";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { MetricCard } from "../../../components/MetricCard";
 import { AlertCard } from "../../../components/AlertCard";
+import { ErrorIndicator } from "../../../components/ErrorIndicator";
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -45,13 +46,25 @@ export default function HomeScreen() {
     openAllAlerts,
     loadMoreAlerts,
     handleMarkAsRead,
+    loadDashboardData,
   } = useDashboardViewModel();
 
-  if (loading && !refreshing) {
+  if ((loading || refreshing) && !summary) {
     return (
       <LoadingIndicator
         message="Preparando seu painel..."
         subMessage="Buscando dados recentes da IA"
+        fullScreen={true}
+      />
+    );
+  }
+
+  if (error && !summary) {
+    return (
+      <ErrorIndicator
+        title="Oops! Servidor Indisponível"
+        message={error}
+        onRetry={() => loadDashboardData()}
         fullScreen={true}
       />
     );
@@ -78,7 +91,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {error ? (
+      {error && summary ? (
         <AlertMessage
           title="Erro"
           message={error}
