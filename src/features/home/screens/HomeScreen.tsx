@@ -27,6 +27,7 @@ import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { MetricCard } from "../../../components/MetricCard";
 import { AlertCard } from "../../../components/AlertCard";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
+import { EmptyState } from "../../../components/EmptyState";
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -316,6 +317,14 @@ export default function HomeScreen() {
             contentContainerStyle={{ padding: 16, gap: 12 }}
             onEndReached={loadMoreAlerts}
             onEndReachedThreshold={0.2}
+            ListEmptyComponent={
+              !loading ? (
+                <EmptyState
+                  title="Nenhum alerta"
+                  message="Nenhum alerta encontrado"
+                />
+              ) : null
+            }
             ListFooterComponent={
               loadingModal ? (
                 <ActivityIndicator
