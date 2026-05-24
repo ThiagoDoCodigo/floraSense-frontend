@@ -38,7 +38,7 @@ export const useAuthViewModel = () => {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      return false;
+      throw errors;
     }
 
     setIsProcessing(true);
@@ -48,7 +48,7 @@ export const useAuthViewModel = () => {
     } catch (err: any) {
       console.log("ERRO AXIOS:", err.message);
       setGlobalError(err.response?.data?.message || "Falha na autenticação.");
-      return false;
+      throw err;
     } finally {
       setIsProcessing(false);
     }
@@ -67,7 +67,7 @@ export const useAuthViewModel = () => {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      return false;
+      throw errors;
     }
 
     setIsProcessing(true);
@@ -76,7 +76,7 @@ export const useAuthViewModel = () => {
       return true;
     } catch (err: any) {
       setGlobalError(err.response?.data?.message || "Falha ao criar conta.");
-      return false;
+      throw err;
     } finally {
       setIsProcessing(false);
     }

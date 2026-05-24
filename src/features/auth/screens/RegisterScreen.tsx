@@ -103,6 +103,7 @@ export default function RegisterScreen() {
           label={isProcessing ? "Criando conta..." : "Finalizar Cadastro"}
           onPress={handleRegister}
           iconPosition="right"
+          errorLabel="Erro ao criar conta"
         />
 
         <Button

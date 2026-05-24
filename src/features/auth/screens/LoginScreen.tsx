@@ -96,6 +96,7 @@ export default function LoginScreen() {
           label={isProcessing ? "Autenticando..." : "Entrar na Plataforma"}
           onPress={handleLogin}
           iconPosition="right"
+          errorLabel="Erro ao efetuar login"
         />
         <TouchableOpacity
           onPress={() => navigation.navigate("Register")}
