@@ -5,7 +5,11 @@ import axios, {
 } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = "http://localhost:3000/api/v1";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+if (!API_URL) {
+  throw new Error("EXPO_PUBLIC_API_URL não definida no .env");
+}
 
 export const floraSenseApi = axios.create({
   baseURL: API_URL,
@@ -20,11 +24,25 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: "@FloraSense:refreshToken",
 };
 
+let inMemoryToken: string | null = null;
+
+export const setInMemoryToken = (token: string | null) => {
+  inMemoryToken = token;
+};
+
+const clearAuthData = async () => {
+  inMemoryToken = null;
+  await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
+};
+
 floraSenseApi.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (!inMemoryToken) {
+      inMemoryToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    }
+
+    if (inMemoryToken && config.headers) {
+      config.headers.Authorization = `Bearer ${inMemoryToken}`;
     }
     return config;
   },
@@ -33,19 +51,19 @@ floraSenseApi.interceptors.request.use(
 
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
+  resolve: (token: string | null) => void;
+  reject: (error: AxiosError) => void;
 }> = [];
 
 const processQueue = (
   error: AxiosError | null,
   token: string | null = null,
 ) => {
-  failedQueue.forEach((prom) => {
+  failedQueue.forEach((promise) => {
     if (error) {
-      prom.reject(error);
+      promise.reject(error);
     } else {
-      prom.resolve(token);
+      promise.resolve(token);
     }
   });
   failedQueue = [];
@@ -60,11 +78,11 @@ floraSenseApi.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise(function (resolve, reject) {
+        return new Promise<string | null>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            if (originalRequest.headers) {
+            if (originalRequest.headers && token) {
               originalRequest.headers.Authorization = `Bearer ${token}`;
             }
             return floraSenseApi(originalRequest);
@@ -81,9 +99,13 @@ floraSenseApi.interceptors.response.use(
         );
         if (!refreshToken) throw new Error("Refresh token não encontrado");
 
-        const { data } = await axios.post(`${API_URL}/auth/refresh`, {
+        const { data } = await axios.post<{
+          tokens: { accessToken: string; refreshToken: string };
+        }>(`${API_URL}/auth/refresh`, {
           refreshToken,
         });
+
+        setInMemoryToken(data.tokens.accessToken);
 
         await AsyncStorage.setItem(
           STORAGE_KEYS.ACCESS_TOKEN,
@@ -100,10 +122,11 @@ floraSenseApi.interceptors.response.use(
 
         processQueue(null, data.tokens.accessToken);
         return floraSenseApi(originalRequest);
-      } catch (refreshError: any) {
-        processQueue(refreshError, null);
-        await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
-        return Promise.reject(refreshError);
+      } catch (refreshError) {
+        const finalError = refreshError as AxiosError;
+        processQueue(finalError, null);
+        await clearAuthData();
+        return Promise.reject(finalError);
       } finally {
         isRefreshing = false;
       }

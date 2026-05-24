@@ -1,4 +1,8 @@
-import { floraSenseApi, STORAGE_KEYS } from "../../../services/floraSenseApi";
+import {
+  floraSenseApi,
+  STORAGE_KEYS,
+  setInMemoryToken,
+} from "../../../services/floraSenseApi";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type {
   AuthUserResponseDTO,
@@ -19,6 +23,8 @@ class AuthService {
       [STORAGE_KEYS.REFRESH_TOKEN, response.data.tokens.refreshToken],
       [STORAGE_KEYS.USER, JSON.stringify(response.data.user)],
     ]);
+
+    setInMemoryToken(response.data.tokens.accessToken);
 
     return response.data.user;
   }
@@ -45,11 +51,19 @@ class AuthService {
       STORAGE_KEYS.REFRESH_TOKEN,
       STORAGE_KEYS.USER,
     ]);
+    setInMemoryToken(null);
   }
 
   async getStoredUser(): Promise<AuthUserResponseDTO | null> {
     const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-    return userStr ? JSON.parse(userStr) : null;
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+
+    if (userStr && token) {
+      setInMemoryToken(token);
+      return JSON.parse(userStr);
+    }
+
+    return null;
   }
 }
 
