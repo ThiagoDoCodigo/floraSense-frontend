@@ -4,7 +4,8 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  ActivityIndicator,
+  Modal,
+  FlatList,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
@@ -14,111 +15,64 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronRight,
-  Activity,
   Sprout,
+  X,
 } from "lucide-react-native";
 
 import { Typography, colors, AlertMessage } from "react-native-th-components";
 import { useDashboardViewModel } from "../viewModels/home.viewModel";
 import type { DashboardAlert } from "../models/home.model";
+import { LoadingIndicator } from "../../../components/LoadingIndicator";
+import { MetricCard } from "../../../components/MetricCard";
+import { AlertCard } from "../../../components/AlertCard";
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
-  const { summary, alerts, loading, refreshing, error, onRefresh, clearError } =
-    useDashboardViewModel();
+  const {
+    user,
+    summary,
+    alerts,
+    loading,
+    refreshing,
+    error,
+    isModalVisible,
+    modalAlerts,
+    loadingModal,
+    setIsModalVisible,
+    onRefresh,
+    clearError,
+    openAllAlerts,
+    loadMoreAlerts,
+    handleMarkAsRead,
+  } = useDashboardViewModel();
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.centerContent}>
-        <ActivityIndicator size="large" color={colors.primary.main} />
-      </View>
+      <LoadingIndicator
+        message="Preparando seu painel..."
+        subMessage="Buscando dados recentes da IA"
+        fullScreen={true}
+      />
     );
   }
 
-  const renderMetricCard = (
-    title: string,
-    value: string | number,
-    icon: any,
-    color: string,
-    bgColor: string,
-  ) => {
-    const IconComponent = icon;
-    return (
-      <View style={styles.metricCard}>
-        <View style={[styles.metricIconBox, { backgroundColor: bgColor }]}>
-          <IconComponent size={20} color={color} />
-        </View>
-        <Typography variant="h2" style={styles.metricValue}>
-          {value}
-        </Typography>
-        <Typography
-          variant="caption"
-          color={colors.text.secondary}
-          style={styles.metricTitle}
-        >
-          {title}
-        </Typography>
-      </View>
-    );
+  const getGreeting = (): string => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "BOM DIA";
+    if (hour >= 12 && hour < 18) return "BOA TARDE";
+    return "BOA NOITE";
   };
 
-  const renderAlertCard = (alert: DashboardAlert) => {
-    const isCritical = alert.type === "critical";
-    const accentColor = isCritical ? colors.danger.main : colors.warning.main;
-    const bgColor = isCritical ? colors.danger.faded : colors.warning.faded;
-    const Icon = isCritical ? AlertTriangle : Activity;
+  const firstName = user?.name
+    ? user.name.split(" ")[0].toUpperCase()
+    : "USUÁRIO";
 
-    return (
-      <TouchableOpacity
-        key={alert.id}
-        activeOpacity={0.8}
-        style={[styles.alertCard, { borderColor: accentColor }]}
-        onPress={() =>
-          navigation.navigate("PlantDetail", { plantId: alert.plantId })
-        }
-      >
-        <View style={styles.alertHeader}>
-          <View style={styles.alertTitleRow}>
-            <Icon size={16} color={accentColor} />
-            <Typography
-              variant="caption"
-              weight="bold"
-              color={accentColor}
-              style={{ marginLeft: 6 }}
-            >
-              {alert.plantName}
-            </Typography>
-          </View>
-          <Typography
-            variant="caption"
-            color={colors.text.muted}
-            style={{ fontSize: 10 }}
-          >
-            {new Date(alert.timestamp).toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Typography>
-        </View>
-        <Typography
-          variant="body"
-          color={colors.text.primary}
-          style={styles.alertMessage}
-        >
-          {alert.message}
-        </Typography>
-        <View style={[styles.actionBadge, { backgroundColor: bgColor }]}>
-          <Typography
-            variant="caption"
-            weight="bold"
-            color={accentColor}
-            style={{ fontSize: 10 }}
-          >
-            AÇÃO: {alert.actionRequired.toUpperCase()}
-          </Typography>
-        </View>
-      </TouchableOpacity>
-    );
+  const onAlertPress = async (alert: DashboardAlert): Promise<void> => {
+    const success = await handleMarkAsRead(alert.id);
+    if (success) {
+      if (isModalVisible) setIsModalVisible(false);
+      navigation.navigate("PlantDetail", { plantId: alert.plantId });
+    }
   };
 
   return (
@@ -151,7 +105,7 @@ export default function HomeScreen() {
               color={colors.primary.main}
               style={{ letterSpacing: 1 }}
             >
-              BOM DIA, THIAGO
+              {getGreeting()}, {firstName}
             </Typography>
             <Typography
               variant="h1"
@@ -169,36 +123,36 @@ export default function HomeScreen() {
         {summary && (
           <View style={styles.metricsGrid}>
             <View style={styles.metricsRow}>
-              {renderMetricCard(
-                "Total de Plantas",
-                summary.totalPlants,
-                Leaf,
-                colors.success.main,
-                colors.success.light,
-              )}
-              {renderMetricCard(
-                "Atenção Necessária",
-                summary.attentionNeeded,
-                AlertTriangle,
-                colors.danger.main,
-                colors.danger.faded,
-              )}
+              <MetricCard
+                title="Total de Plantas"
+                value={summary.totalPlants}
+                icon={Leaf}
+                color={colors.success.main}
+                bgColor={colors.success.light}
+              />
+              <MetricCard
+                title="Atenção Necessária"
+                value={summary.plantsInAttention}
+                icon={AlertTriangle}
+                color={colors.danger.main}
+                bgColor={colors.danger.faded}
+              />
             </View>
             <View style={styles.metricsRow}>
-              {renderMetricCard(
-                "Umidade Média",
-                `${summary.avgMoisture}%`,
-                Droplets,
-                colors.info.main,
-                colors.info.light,
-              )}
-              {renderMetricCard(
-                "Temp. Ambiente",
-                `${summary.avgTemperature}°C`,
-                Thermometer,
-                colors.warning.main,
-                colors.warning.faded,
-              )}
+              <MetricCard
+                title="Umidade Média"
+                value={`${summary.averageSoilMoisture}%`}
+                icon={Droplets}
+                color={colors.info.main}
+                bgColor={colors.info.light}
+              />
+              <MetricCard
+                title="Temp. Ambiente"
+                value={`${summary.averageTemperature}°C`}
+                icon={Thermometer}
+                color={colors.warning.main}
+                bgColor={colors.warning.faded}
+              />
             </View>
           </View>
         )}
@@ -208,7 +162,10 @@ export default function HomeScreen() {
             Alertas da IA
           </Typography>
           {alerts.length > 0 && (
-            <TouchableOpacity style={styles.seeAllButton}>
+            <TouchableOpacity
+              style={styles.seeAllButton}
+              onPress={openAllAlerts}
+            >
               <Typography
                 variant="caption"
                 weight="bold"
@@ -223,7 +180,9 @@ export default function HomeScreen() {
 
         {alerts.length > 0 ? (
           <View style={styles.alertsContainer}>
-            {alerts.map(renderAlertCard)}
+            {alerts.map((alert) => (
+              <AlertCard key={alert.id} alert={alert} onPress={onAlertPress} />
+            ))}
           </View>
         ) : (
           <View style={styles.emptyAlerts}>
@@ -246,12 +205,12 @@ export default function HomeScreen() {
               align="center"
               style={{ marginTop: 4 }}
             >
-              Suas plantas estão saudáveis e sem alertas no momento.
+              Suas plantas estão saudáveis e sem alertas urgentes.
             </Typography>
           </View>
         )}
 
-        <View>
+        <View style={{ marginTop: 16 }}>
           <Typography
             variant="title"
             color={colors.text.primary}
@@ -317,15 +276,53 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Typography variant="title">Todos os Alertas</Typography>
+            <TouchableOpacity
+              onPress={() => setIsModalVisible(false)}
+              style={styles.closeModalBtn}
+            >
+              <X size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={modalAlerts}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <AlertCard alert={item} onPress={onAlertPress} />
+            )}
+            contentContainerStyle={{ padding: 16, gap: 12 }}
+            onEndReached={loadMoreAlerts}
+            onEndReachedThreshold={0.2}
+            ListFooterComponent={
+              loadingModal ? (
+                <View style={{ padding: 20 }}>
+                  <LoadingIndicator
+                    fullScreen={false}
+                    message="Buscando mais alertas..."
+                    subMessage=""
+                  />
+                </View>
+              ) : null
+            }
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  centerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
   scrollContent: { paddingBottom: 40 },
-
   welcomeSection: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -344,100 +341,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary.light,
   },
-
-  metricsGrid: {
-    gap: 12,
-    marginBottom: 32,
-  },
-  metricsRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  metricIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  metricValue: {
-    fontSize: 24,
-    marginBottom: 2,
-  },
-  metricTitle: {
-    fontSize: 11,
-  },
-
+  metricsGrid: { gap: 12, marginBottom: 32 },
+  metricsRow: { flexDirection: "row", gap: 12 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
   },
-  seeAllButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  alertsContainer: {
-    gap: 12,
-    marginBottom: 32,
-  },
-  alertCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  alertHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  alertTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  alertMessage: {
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  actionBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
+  seeAllButton: { flexDirection: "row", alignItems: "center" },
+  alertsContainer: { gap: 12, marginBottom: 32 },
   emptyAlerts: {
     backgroundColor: colors.surface,
-    marginHorizontal: 16,
     padding: 24,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 14,
   },
   quickActionButton: {
     flexDirection: "row",
@@ -457,4 +378,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 16,
   },
+  modalContainer: { flex: 1, backgroundColor: colors.background },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  closeModalBtn: { padding: 4 },
 });

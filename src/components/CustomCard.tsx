@@ -1,6 +1,5 @@
-import React from "react";
 import { View, Image, TouchableOpacity, StyleSheet } from "react-native";
-import { ChevronRight, type LucideIcon } from "lucide-react-native";
+import { ChevronRight, Leaf, type LucideIcon } from "lucide-react-native";
 import { colors } from "react-native-th-components";
 import { Typography } from "react-native-th-components";
 
@@ -34,15 +33,19 @@ export default function CustomCard({
       style={styles.card}
     >
       <View style={styles.container}>
-        {image && (
-          <View style={styles.imageWrapper}>
+        <View style={styles.imageWrapper}>
+          {image ? (
             <Image
               source={{ uri: image }}
               style={styles.image}
               resizeMode="cover"
             />
-          </View>
-        )}
+          ) : (
+            <View style={styles.placeholderContainer}>
+              <Leaf size={36} color={colors.primary.main} />
+            </View>
+          )}
+        </View>
 
         <View style={styles.content}>
           <View style={styles.headerRow}>
@@ -136,11 +139,16 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 20,
-    backgroundColor: colors.surfaceHighlight,
+    backgroundColor: colors.primary.faded,
     marginRight: 16,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: "hidden",
+  },
+  placeholderContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   image: {
     width: "100%",

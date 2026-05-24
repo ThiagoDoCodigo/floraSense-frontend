@@ -1,45 +1,29 @@
-import type { DashboardSummary, DashboardAlert } from "../models/home.model";
-
-const MOCK_SUMMARY: DashboardSummary = {
-  totalPlants: 10,
-  healthyPlants: 8,
-  attentionNeeded: 2,
-  avgMoisture: 48,
-  avgTemperature: 24,
-};
-
-const MOCK_ALERTS: DashboardAlert[] = [
-  {
-    id: "alert_1",
-    plantId: "plant_10",
-    plantName: "Alocasia Polly",
-    message: "Nível de fósforo abaixo do ideal para a fase atual.",
-    type: "warning",
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    actionRequired: "Adubação Fosfatada",
-  },
-  {
-    id: "alert_2",
-    plantId: "plant_3",
-    plantName: "Zamioculca Quarto",
-    message: "Solo extremamente seco. Risco de estresse hídrico se prolongado.",
-    type: "critical",
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-    actionRequired: "Regar imediatamente",
-  },
-];
+import { floraSenseApi } from "../../../services/floraSenseApi";
+import type {
+  DashboardSummary,
+  PaginatedAlertsResponse,
+} from "../models/home.model";
 
 class DashboardService {
-  async getSummary(): Promise<DashboardSummary> {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_SUMMARY), 800);
-    });
+  public async getIndicators(): Promise<DashboardSummary> {
+    const { data } = await floraSenseApi.get<DashboardSummary>(
+      "/plants/indicators/by-plants",
+    );
+    return data;
   }
 
-  async getRecentAlerts(): Promise<DashboardAlert[]> {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(MOCK_ALERTS), 1000);
-    });
+  public async getUrgentAlerts(
+    page: number = 1,
+    limit: number = 3,
+  ): Promise<PaginatedAlertsResponse> {
+    const { data } = await floraSenseApi.get<PaginatedAlertsResponse>(
+      `/sensor-readings/urgent?page=${page}&limit=${limit}`,
+    );
+    return data;
+  }
+
+  public async markAsRead(readingId: string): Promise<void> {
+    await floraSenseApi.patch(`/sensor-readings/${readingId}/read`);
   }
 }
 
