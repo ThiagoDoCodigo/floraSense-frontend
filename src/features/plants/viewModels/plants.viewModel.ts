@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import plantService from "../services/plant.service";
-import type {
+import {
   Plant,
   SensorReading,
   PlantFormErrors,
+  PlantPhaseEnum,
+  EnvironmentTypeEnum,
+  SunlightExposureEnum,
+  SubstrateTypeEnum,
 } from "../models/plant.model";
+import { useFocusEffect } from "@react-navigation/native";
 
 export const usePlantListViewModel = () => {
   const [plants, setPlants] = useState<Plant[]>([]);
@@ -29,7 +34,8 @@ export const usePlantListViewModel = () => {
         setPage(pageNumber);
       } catch (err: any) {
         setError(
-          err?.message ?? "Falha silenciosa ao buscar sua lista de plantas.",
+          err?.response?.data?.message ??
+            "Falha silenciosa ao buscar sua lista de plantas.",
         );
       } finally {
         setLoading(false);
@@ -39,9 +45,11 @@ export const usePlantListViewModel = () => {
     [],
   );
 
-  useEffect(() => {
-    fetchPlants(1, true);
-  }, [fetchPlants]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPlants(1, true);
+    }, [fetchPlants]),
+  );
 
   const loadMore = () => {
     if (!loadingMore && hasMore) fetchPlants(page + 1);
@@ -61,46 +69,84 @@ export const usePlantListViewModel = () => {
 export const usePlantDashboardViewModel = (plantId: string) => {
   const [plant, setPlant] = useState<Plant | null>(null);
   const [readings, setReadings] = useState<SensorReading[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
 
-  const loadData = useCallback(async () => {
-    if (!plantId) return setError("Referência da planta inválida.");
-    setLoading(true);
-    setError("");
+  const fetchReadings = useCallback(
+    async (pageNum: number, isRefresh = false) => {
+      if (!plantId) return;
+      if (isRefresh) setLoading(true);
+      else setLoadingMore(true);
+      setError("");
 
-    try {
-      const [plantData, readingsData] = await Promise.all([
-        plantService.getPlantById(plantId),
-        plantService.getPlantReadings(plantId),
-      ]);
-      setPlant(plantData ?? null);
-      setReadings(readingsData ?? []);
-    } catch (err: any) {
-      setError(err?.message ?? "Não foi possível carregar os dados do sensor.");
-    } finally {
-      setLoading(false);
-    }
-  }, [plantId]);
+      try {
+        if (isRefresh) {
+          const plantData = await plantService.getPlantById(plantId);
+          setPlant(plantData ?? null);
+        }
+        const readingsResponse = await plantService.getPlantReadings(
+          plantId,
+          pageNum,
+          10,
+        );
+        const newData = readingsResponse?.data ?? [];
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+        setReadings((prev) => (isRefresh ? newData : [...prev, ...newData]));
+        setHasMore(pageNum < (readingsResponse?.totalPages ?? 1));
+        setPage(pageNum);
+      } catch (err: any) {
+        setError(
+          err?.response?.data?.message ??
+            "Não foi possível carregar os dados do sensor.",
+        );
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [plantId],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchReadings(1, true);
+    }, [fetchReadings]),
+  );
+
+  const loadMoreReadings = () => {
+    if (!loadingMore && hasMore) fetchReadings(page + 1);
+  };
 
   return {
     plant,
     readings,
     loading,
+    loadingMore,
     error,
-    refresh: loadData,
+    refresh: () => fetchReadings(1, true),
+    loadMoreReadings,
     clearError: () => setError(""),
   };
 };
 
 export const useAddPlantViewModel = () => {
   const [name, setName] = useState("");
-  const [species, setSpecies] = useState("");
+  const [especie, setEspecie] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [phaseOfLife, setPhaseOfLife] = useState<PlantPhaseEnum>(
+    PlantPhaseEnum.VEGETATIVE,
+  );
+  const [environmentType, setEnvironmentType] = useState<EnvironmentTypeEnum>(
+    EnvironmentTypeEnum.INDOOR,
+  );
+  const [sunlightExposure, setSunlightExposure] =
+    useState<SunlightExposureEnum>(SunlightExposureEnum.PARTIAL_SHADE);
+  const [substrateType, setSubstrateType] = useState<SubstrateTypeEnum>(
+    SubstrateTypeEnum.SOIL,
+  );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -116,8 +162,8 @@ export const useAddPlantViewModel = () => {
   const validateFields = (): boolean => {
     const errors: PlantFormErrors = {};
     if (!name.trim()) errors.name = "Defina um apelido para sua planta.";
-    if (!species.trim())
-      errors.species = "Informe a espécie ou família da planta.";
+    if (!especie.trim())
+      errors.especie = "Informe a espécie para calibração da IA.";
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -127,21 +173,26 @@ export const useAddPlantViewModel = () => {
     clearMessages();
     if (!validateFields()) {
       setError("Verifique os campos destacados.");
-      return false;
+      throw error;
     }
 
     setSaving(true);
     try {
       await plantService.addPlant({
         name: name.trim(),
-        species: species.trim(),
-        imageUrl,
+        especie: especie.trim(),
+        phaseOfLife,
+        environmentType,
+        sunlightExposure,
+        substrateType,
       });
       setSuccess("Planta cadastrada com sucesso!");
       return true;
     } catch (err: any) {
-      setError(err?.message ?? "Ocorreu um erro ao comunicar com a Nuvem.");
-      return false;
+      setError(
+        err?.response?.data?.message ?? "Falha de validação com o servidor.",
+      );
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -150,10 +201,18 @@ export const useAddPlantViewModel = () => {
   return {
     name,
     setName,
-    species,
-    setSpecies,
+    especie,
+    setEspecie,
     imageUrl,
     setImageUrl,
+    phaseOfLife,
+    setPhaseOfLife,
+    environmentType,
+    setEnvironmentType,
+    sunlightExposure,
+    setSunlightExposure,
+    substrateType,
+    setSubstrateType,
     saving,
     error,
     success,
@@ -165,8 +224,21 @@ export const useAddPlantViewModel = () => {
 
 export const useEditPlantViewModel = (initialPlant: Plant | null) => {
   const [name, setName] = useState(initialPlant?.name ?? "");
-  const [species, setSpecies] = useState(initialPlant?.species ?? "");
+  const [especie, setEspecie] = useState(initialPlant?.especie ?? "");
   const [imageUrl, setImageUrl] = useState(initialPlant?.imageUrl ?? "");
+  const [phaseOfLife, setPhaseOfLife] = useState<PlantPhaseEnum>(
+    initialPlant?.phaseOfLife ?? PlantPhaseEnum.VEGETATIVE,
+  );
+  const [environmentType, setEnvironmentType] = useState<EnvironmentTypeEnum>(
+    initialPlant?.environmentType ?? EnvironmentTypeEnum.INDOOR,
+  );
+  const [sunlightExposure, setSunlightExposure] =
+    useState<SunlightExposureEnum>(
+      initialPlant?.sunlightExposure ?? SunlightExposureEnum.PARTIAL_SHADE,
+    );
+  const [substrateType, setSubstrateType] = useState<SubstrateTypeEnum>(
+    initialPlant?.substrateType ?? SubstrateTypeEnum.SOIL,
+  );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -182,7 +254,7 @@ export const useEditPlantViewModel = (initialPlant: Plant | null) => {
   const validateFields = (): boolean => {
     const errors: PlantFormErrors = {};
     if (!name.trim()) errors.name = "O apelido não pode ficar vazio.";
-    if (!species.trim()) errors.species = "A espécie é essencial para a IA.";
+    if (!especie.trim()) errors.especie = "A espécie é essencial para a IA.";
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -191,24 +263,30 @@ export const useEditPlantViewModel = (initialPlant: Plant | null) => {
   const saveChanges = async (): Promise<boolean> => {
     if (!initialPlant?.id) {
       setError("Referência de planta perdida. Volte e tente novamente.");
-      return false;
+      throw error;
     }
 
     clearMessages();
-    if (!validateFields()) return false;
+    if (!validateFields()) {
+      setError("Verifique os campos destacados.");
+      throw error;
+    }
 
     setSaving(true);
     try {
       await plantService.updatePlant(initialPlant.id, {
         name: name.trim(),
-        species: species.trim(),
-        imageUrl,
+        especie: especie.trim(),
+        phaseOfLife,
+        environmentType,
+        sunlightExposure,
+        substrateType,
       });
       setSuccess("Informações atualizadas com sucesso!");
       return true;
     } catch (err: any) {
-      setError(err?.message ?? "Falha ao salvar as edições.");
-      return false;
+      setError(err?.response?.data?.message ?? "Falha ao salvar as edições.");
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -217,10 +295,18 @@ export const useEditPlantViewModel = (initialPlant: Plant | null) => {
   return {
     name,
     setName,
-    species,
-    setSpecies,
+    especie,
+    setEspecie,
     imageUrl,
     setImageUrl,
+    phaseOfLife,
+    setPhaseOfLife,
+    environmentType,
+    setEnvironmentType,
+    sunlightExposure,
+    setSunlightExposure,
+    substrateType,
+    setSubstrateType,
     saving,
     error,
     success,
@@ -292,7 +378,10 @@ export const useManualControlViewModel = (plantId: string) => {
 };
 
 export const useBluetoothSetupViewModel = (plantId: string) => {
-  const [step, setStep] = useState<"scan" | "wifi">("scan");
+  const [step, setStep] = useState<
+    "loading" | "scan" | "wifi" | "connected" | "error"
+  >("loading");
+  const [plant, setPlant] = useState<any | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
   const [devices, setDevices] = useState<
@@ -304,6 +393,7 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
   const [ssid, setSsid] = useState("");
   const [password, setPassword] = useState("");
   const [pairing, setPairing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -328,6 +418,29 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
     }, 2000);
   }, []);
 
+  const loadData = useCallback(async () => {
+    setStep("loading");
+    clearMessages();
+    try {
+      const plantData = await plantService.getPlantById(plantId);
+      setPlant(plantData);
+
+      if (plantData.isConnected) {
+        setStep("connected");
+      } else {
+        setStep("scan");
+        scanDevices();
+      }
+    } catch (err: any) {
+      setError("Não foi possível verificar o status do dispositivo.");
+      setStep("error");
+    }
+  }, [plantId, scanDevices]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const connectToDevice = (device: { id: string; name: string }) => {
     setIsConnecting(device.id);
     clearMessages();
@@ -347,31 +460,60 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
     clearMessages();
     if (!ssid.trim() || !password) {
       setError("Preencha o nome da rede e a senha.");
-      return false;
+      throw new Error("Missing credentials");
     }
 
     setPairing(true);
     try {
       await plantService.pairESP32(plantId, ssid.trim(), password);
+
+      await plantService.connectESP32(plantId, {
+        macAddress: "FC:F5:C4:0B:12:34",
+        firmwareVersion: "v1.0.0",
+      });
+
       setSuccess("Hardware provisionado com sucesso na rede Wi-Fi!");
       return true;
     } catch (err: any) {
       setError(
-        err?.message ??
-          "A comunicação BLE falhou durante o envio das credenciais.",
+        err?.response?.data?.message ??
+          err?.message ??
+          "A comunicação falhou durante o envio das credenciais.",
       );
-      return false;
+      throw err;
     } finally {
       setPairing(false);
     }
   };
 
-  useEffect(() => {
-    scanDevices();
-  }, [scanDevices]);
+  const unpairDevice = async (): Promise<boolean> => {
+    clearMessages();
+    setDisconnecting(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      await plantService.disconnectESP32(plantId);
+
+      setSuccess("Dispositivo desvinculado com sucesso.");
+      setPlant((prev: any) => (prev ? { ...prev, isConnected: false } : null));
+      setStep("scan");
+      scanDevices();
+      return true;
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ??
+          "Falha ao tentar desvincular o dispositivo.",
+      );
+      throw err;
+    } finally {
+      setDisconnecting(false);
+    }
+  };
 
   return {
     step,
+    plant,
+    loadData,
     isScanning,
     devices,
     connectedDevice,
@@ -381,11 +523,13 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
     password,
     setPassword,
     pairing,
+    disconnecting,
     error,
     success,
     scanDevices,
     connectToDevice,
     pairDevice,
+    unpairDevice,
     clearMessages,
   };
 };

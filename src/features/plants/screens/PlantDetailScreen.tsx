@@ -16,203 +16,238 @@ import {
   Bluetooth,
   PenLine,
   Clock,
-  LineChart,
 } from "lucide-react-native";
 
 import { Typography, colors, AlertMessage } from "react-native-th-components";
 import { usePlantDashboardViewModel } from "../viewModels/plants.viewModel";
-import type { SensorReading } from "../models/plant.model";
+import { PlantPhaseEnum, SensorReading } from "../models/plant.model";
 import { EmptyState } from "../../../components/EmptyState";
+import { phaseTranslations } from "../utils/translatePlantValues";
+import { LoadingIndicator } from "../../../components/LoadingIndicator";
+import { ErrorIndicator } from "../../../components/ErrorIndicator";
 
 export default function PlantDetailScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { plantId } = route.params;
 
-  const { plant, readings, loading, error, clearError } =
-    usePlantDashboardViewModel(plantId);
+  const {
+    plant,
+    readings,
+    loading,
+    loadingMore,
+    error,
+    clearError,
+    loadMoreReadings,
+    refresh,
+  } = usePlantDashboardViewModel(plantId);
 
-  if (loading || !plant) {
+  if (loading && !plant) {
     return (
-      <View style={styles.centerContent}>
-        <ActivityIndicator size="large" color={colors.primary.main} />
-      </View>
+      <LoadingIndicator
+        message="Acessando telemetria..."
+        subMessage="Buscando informações da sua planta"
+        fullScreen={true}
+      />
+    );
+  }
+
+  if (error && !plant) {
+    return (
+      <ErrorIndicator
+        title="Oops! Falha na conexão"
+        message={error}
+        onRetry={() => refresh()}
+        fullScreen={true}
+      />
     );
   }
 
   const latestReading = readings?.length > 0 ? readings[0] : null;
 
-  const renderHeader = () => (
-    <View style={styles.headerSection}>
-      <View style={styles.heroContainer}>
-        <Image source={{ uri: plant.imageUrl }} style={styles.heroImage} />
-        <View style={styles.heroOverlay}>
-          <View style={styles.heroBadge}>
-            <Typography
-              variant="caption"
-              weight="bold"
-              color={colors.text.inverse}
-            >
-              {plant.species.toUpperCase()}
-            </Typography>
-          </View>
-          <Typography
-            variant="h1"
-            color={colors.text.inverse}
-            style={styles.heroTitle}
-          >
-            {plant.name}
-          </Typography>
-          <Typography
-            variant="caption"
-            color={colors.text.inverse}
-            style={{ opacity: 0.8 }}
-          >
-            {plant.scientificName}
-          </Typography>
-        </View>
-      </View>
-
-      <View style={styles.controlsSection}>
-        <TouchableOpacity
-          style={styles.controlWidget}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate("BluetoothSetup", { plantId })}
-        >
-          <View
-            style={[
-              styles.controlIconBg,
-              { backgroundColor: colors.info.light },
-            ]}
-          >
-            <Bluetooth size={24} color={colors.info.main} />
-          </View>
-          <Typography
-            variant="caption"
-            weight="bold"
-            color={colors.text.primary}
-            style={styles.controlText}
-          >
-            Conectar
-          </Typography>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.controlWidget}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate("ManualControl", { plantId })}
-        >
-          <View
-            style={[
-              styles.controlIconBg,
-              { backgroundColor: colors.warning.faded },
-            ]}
-          >
-            <Settings2 size={24} color={colors.warning.main} />
-          </View>
-          <Typography
-            variant="caption"
-            weight="bold"
-            color={colors.text.primary}
-            style={styles.controlText}
-          >
-            Controles
-          </Typography>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.controlWidget}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate("EditPlant", { plant })}
-        >
-          <View
-            style={[
-              styles.controlIconBg,
-              { backgroundColor: colors.primary.faded },
-            ]}
-          >
-            <PenLine size={24} color={colors.primary.main} />
-          </View>
-          <Typography
-            variant="caption"
-            weight="bold"
-            color={colors.text.primary}
-            style={styles.controlText}
-          >
-            Editar
-          </Typography>
-        </TouchableOpacity>
-      </View>
-
-      {latestReading && (
-        <View style={styles.liveStatusContainer}>
-          <View style={styles.liveStatusHeader}>
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
+  const renderHeader = () => {
+    if (!plant) return null;
+    return (
+      <View style={styles.headerSection}>
+        <View style={styles.heroContainer}>
+          {plant.imageUrl ? (
+            <Image source={{ uri: plant.imageUrl }} style={styles.heroImage} />
+          ) : (
+            <View
+              style={[
+                styles.heroImage,
+                { backgroundColor: colors.primary.faded },
+              ]}
+            />
+          )}
+          <View style={styles.heroOverlay}>
+            <View style={styles.heroBadge}>
               <Typography
                 variant="caption"
                 weight="bold"
-                color={colors.success.main}
+                color={colors.text.inverse}
               >
-                ÚLTIMA LEITURA
+                {plant.especie.toUpperCase()}
               </Typography>
             </View>
-          </View>
-
-          <View style={styles.liveGrid}>
-            <View style={styles.liveItem}>
-              <Droplets size={22} color={colors.info.main} />
-              <Typography
-                variant="h2"
-                color={colors.text.primary}
-                style={styles.liveValue}
-              >
-                {latestReading.soilMoisture}%
-              </Typography>
-              <Typography variant="caption" color={colors.text.secondary}>
-                Umidade
-              </Typography>
-            </View>
-            <View style={styles.liveDivider} />
-            <View style={styles.liveItem}>
-              <Thermometer size={22} color={colors.warning.main} />
-              <Typography
-                variant="h2"
-                color={colors.text.primary}
-                style={styles.liveValue}
-              >
-                {latestReading.temperature}°C
-              </Typography>
-              <Typography variant="caption" color={colors.text.secondary}>
-                Ar
-              </Typography>
-            </View>
-            <View style={styles.liveDivider} />
-            <View style={styles.liveItem}>
-              <Activity size={22} color={colors.success.main} />
-              <Typography
-                variant="h2"
-                color={colors.text.primary}
-                style={styles.liveValue}
-              >
-                {latestReading.nitrogen}-{latestReading.phosphorus}-
-                {latestReading.potassium}
-              </Typography>
-              <Typography variant="caption" color={colors.text.secondary}>
-                NPK
-              </Typography>
-            </View>
+            <Typography
+              variant="h1"
+              color={colors.text.inverse}
+              style={styles.heroTitle}
+            >
+              {plant.name}
+            </Typography>
+            <Typography
+              variant="caption"
+              color={colors.text.inverse}
+              style={{ opacity: 0.8 }}
+            >
+              {phaseTranslations[plant.phaseOfLife as PlantPhaseEnum]}
+            </Typography>
           </View>
         </View>
-      )}
 
-      <View style={styles.historyHeader}>
-        <Typography variant="title" color={colors.text.primary}>
-          Relatórios da IA
-        </Typography>
+        <View style={styles.controlsSection}>
+          <TouchableOpacity
+            style={styles.controlWidget}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate("BluetoothSetup", { plantId })}
+          >
+            <View
+              style={[
+                styles.controlIconBg,
+                { backgroundColor: colors.info.light },
+              ]}
+            >
+              <Bluetooth size={24} color={colors.info.main} />
+            </View>
+            <Typography
+              variant="caption"
+              weight="bold"
+              color={colors.text.primary}
+              style={styles.controlText}
+            >
+              Conectar
+            </Typography>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.controlWidget}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate("ManualControl", { plantId })}
+          >
+            <View
+              style={[
+                styles.controlIconBg,
+                { backgroundColor: colors.warning.faded },
+              ]}
+            >
+              <Settings2 size={24} color={colors.warning.main} />
+            </View>
+            <Typography
+              variant="caption"
+              weight="bold"
+              color={colors.text.primary}
+              style={styles.controlText}
+            >
+              Controles
+            </Typography>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.controlWidget}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate("EditPlant", { plant })}
+          >
+            <View
+              style={[
+                styles.controlIconBg,
+                { backgroundColor: colors.primary.faded },
+              ]}
+            >
+              <PenLine size={24} color={colors.primary.main} />
+            </View>
+            <Typography
+              variant="caption"
+              weight="bold"
+              color={colors.text.primary}
+              style={styles.controlText}
+            >
+              Editar
+            </Typography>
+          </TouchableOpacity>
+        </View>
+
+        {latestReading && (
+          <View style={styles.liveStatusContainer}>
+            <View style={styles.liveStatusHeader}>
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Typography
+                  variant="caption"
+                  weight="bold"
+                  color={colors.success.main}
+                >
+                  ÚLTIMA LEITURA
+                </Typography>
+              </View>
+            </View>
+
+            <View style={styles.liveGrid}>
+              <View style={styles.liveItem}>
+                <Droplets size={22} color={colors.info.main} />
+                <Typography
+                  variant="h2"
+                  color={colors.text.primary}
+                  style={styles.liveValue}
+                >
+                  {latestReading.soilMoisture}%
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  Umidade
+                </Typography>
+              </View>
+              <View style={styles.liveDivider} />
+              <View style={styles.liveItem}>
+                <Thermometer size={22} color={colors.warning.main} />
+                <Typography
+                  variant="h2"
+                  color={colors.text.primary}
+                  style={styles.liveValue}
+                >
+                  {latestReading.temperature}°C
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  Ar
+                </Typography>
+              </View>
+              <View style={styles.liveDivider} />
+              <View style={styles.liveItem}>
+                <Activity size={22} color={colors.success.main} />
+                <Typography
+                  variant="h2"
+                  color={colors.text.primary}
+                  style={styles.liveValue}
+                >
+                  {latestReading.nitrogen}-{latestReading.phosphorus}-
+                  {latestReading.potassium}
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  NPK
+                </Typography>
+              </View>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.historyHeader}>
+          <Typography variant="title" color={colors.text.primary}>
+            Relatórios da IA
+          </Typography>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderReading = ({ item }: { item: SensorReading }) => (
     <View style={styles.reportCard}>
@@ -225,14 +260,12 @@ export default function PlantDetailScreen() {
             color={colors.text.secondary}
             style={{ marginLeft: 6 }}
           >
-            {new Date(item.timestamp)
-              .toLocaleString("pt-BR", {
-                day: "2-digit",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-              .replace(" de ", " ")}
+            {new Date(item.created_at).toLocaleString("pt-BR", {
+              day: "2-digit",
+              month: "long",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </Typography>
         </View>
       </View>
@@ -317,9 +350,9 @@ export default function PlantDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {error ? (
+      {error && plant ? (
         <AlertMessage
-          title="Erro"
+          title="Atenção"
           message={error}
           type="error"
           onClose={clearError}
@@ -332,13 +365,28 @@ export default function PlantDetailScreen() {
         renderItem={renderReading}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={
-          <EmptyState
-            title="Nenhum dado recebido"
-            message="Ainda não há relatórios da IA. Conecte seu hardware via Bluetooth para iniciar a telemetria."
-          />
+          !loading ? (
+            <EmptyState
+              title="Nenhum dado recebido"
+              message="Ainda não há relatórios da IA. Conecte seu hardware via Bluetooth para iniciar a telemetria."
+            />
+          ) : null
         }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        onRefresh={refresh}
+        refreshing={loading && readings.length > 0}
+        onEndReached={loadMoreReadings}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator
+              size="small"
+              color={colors.primary.main}
+              style={{ margin: 16 }}
+            />
+          ) : null
+        }
       />
     </View>
   );
@@ -348,9 +396,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
   listContent: { paddingBottom: 40 },
-
   headerSection: { paddingTop: 16 },
-
   heroContainer: {
     width: "100%",
     height: 260,
@@ -379,7 +425,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   heroTitle: { fontSize: 28, marginBottom: 4, letterSpacing: -0.5 },
-
   controlsSection: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -409,7 +454,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   controlText: { letterSpacing: 0.5 },
-
   liveStatusContainer: {
     backgroundColor: colors.surface,
     borderRadius: 24,
@@ -456,9 +500,7 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: colors.surfaceHighlight,
   },
-
   historyHeader: { marginBottom: 16 },
-
   reportCard: {
     backgroundColor: colors.surface,
     borderRadius: 20,
@@ -481,7 +523,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   reportTimeBox: { flexDirection: "row", alignItems: "center" },
-
   reportTelemetry: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -489,7 +530,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   reportTelemetryItem: { flexDirection: "row", alignItems: "center" },
-
   dashedDivider: {
     height: 1,
     marginHorizontal: 16,
@@ -497,7 +537,6 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceHighlight,
     borderStyle: "dashed",
   },
-
   aiSection: { padding: 16 },
   aiTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   aiText: { lineHeight: 22, marginBottom: 16 },

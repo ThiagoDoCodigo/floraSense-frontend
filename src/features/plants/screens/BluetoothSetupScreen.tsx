@@ -14,6 +14,8 @@ import {
   Cpu,
   RefreshCw,
   SmartphoneNfc,
+  Unplug,
+  Clock,
 } from "lucide-react-native";
 
 import {
@@ -25,6 +27,8 @@ import {
   AlertMessage,
 } from "react-native-th-components";
 import { useBluetoothSetupViewModel } from "../viewModels/plants.viewModel";
+import { LoadingIndicator } from "../../../components/LoadingIndicator";
+import { ErrorIndicator } from "../../../components/ErrorIndicator";
 
 export default function BluetoothSetupScreen() {
   const route = useRoute<any>();
@@ -33,6 +37,7 @@ export default function BluetoothSetupScreen() {
 
   const {
     step,
+    plant,
     isScanning,
     devices,
     connectedDevice,
@@ -42,20 +47,155 @@ export default function BluetoothSetupScreen() {
     password,
     setPassword,
     pairing,
+    disconnecting,
     error,
     success,
     scanDevices,
+    loadData,
     connectToDevice,
     pairDevice,
+    unpairDevice,
     clearMessages,
   } = useBluetoothSetupViewModel(plantId);
 
   const handlePair = async () => {
-    await pairDevice();
-    setTimeout(() => {
-      if (navigation.canGoBack()) navigation.goBack();
-    }, 2000);
+    const ok = await pairDevice();
+    if (ok) {
+      setTimeout(() => {
+        if (navigation.canGoBack()) navigation.goBack();
+      }, 2000);
+    }
   };
+
+  if (step === "loading") {
+    return (
+      <LoadingIndicator
+        message="Verificando Hardware..."
+        subMessage="Checando conexões do dispositivo"
+        fullScreen={true}
+      />
+    );
+  }
+
+  if (step === "error") {
+    return (
+      <ErrorIndicator
+        title="Falha na Conexão"
+        message={error}
+        onRetry={loadData}
+        fullScreen={true}
+      />
+    );
+  }
+
+  const renderConnectedStep = () => (
+    <View style={styles.stepContainer}>
+      <View
+        style={[
+          styles.infoBox,
+          {
+            borderColor: colors.success.main,
+            backgroundColor: colors.success.light,
+          },
+        ]}
+      >
+        <Cpu
+          size={40}
+          color={colors.success.main}
+          style={{ marginBottom: 16 }}
+        />
+        <Typography variant="h2" align="center" color={colors.success.main}>
+          Dispositivo Ativo
+        </Typography>
+        <Typography
+          variant="body"
+          color={colors.text.secondary}
+          align="center"
+          style={{ marginTop: 8 }}
+        >
+          Seu módulo FloraSense está conectado e enviando telemetria para a
+          nuvem.
+        </Typography>
+      </View>
+
+      <View style={styles.detailsContainer}>
+        <Typography variant="title" style={{ marginBottom: 16 }}>
+          Detalhes da Conexão
+        </Typography>
+
+        <View style={styles.detailRow}>
+          <Typography
+            variant="body"
+            weight="bold"
+            color={colors.text.secondary}
+          >
+            Endereço MAC
+          </Typography>
+          <Typography variant="body" color={colors.text.primary}>
+            {plant?.macAddress || "Desconhecido"}
+          </Typography>
+        </View>
+        <View style={styles.detailDivider} />
+
+        <View style={styles.detailRow}>
+          <Typography
+            variant="body"
+            weight="bold"
+            color={colors.text.secondary}
+          >
+            Firmware
+          </Typography>
+          <Typography variant="body" color={colors.text.primary}>
+            {plant?.firmwareVersion || "v1.0.0"}
+          </Typography>
+        </View>
+        <View style={styles.detailDivider} />
+
+        <View style={styles.detailRow}>
+          <Typography
+            variant="body"
+            weight="bold"
+            color={colors.text.secondary}
+          >
+            Conectado em
+          </Typography>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Clock
+              size={14}
+              color={colors.text.muted}
+              style={{ marginRight: 6 }}
+            />
+            <Typography variant="body" color={colors.text.primary}>
+              {plant?.lastConnectionDate
+                ? new Date(plant.lastConnectionDate).toLocaleDateString("pt-BR")
+                : "Recente"}
+            </Typography>
+          </View>
+        </View>
+      </View>
+
+      <View style={{ marginTop: 32 }}>
+        <ActionButton
+          label="Desvincular Dispositivo"
+          onPress={async () => {
+            await unpairDevice();
+          }}
+          loadingLabel="Desconectando módulo..."
+          successLabel="Desvinculado!"
+          icon={Unplug}
+          variant="outline"
+        />
+        <Typography
+          variant="caption"
+          align="center"
+          color={colors.text.muted}
+          style={{ marginTop: 12 }}
+        >
+          Isso interromperá as leituras automatizadas desta planta.
+        </Typography>
+      </View>
+    </View>
+  );
 
   const renderScanStep = () => (
     <View style={styles.stepContainer}>
@@ -222,9 +362,9 @@ export default function BluetoothSetupScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {error ? (
+      {error && (plant || step !== "scan") ? (
         <AlertMessage
-          title="Falha"
+          title="Atenção"
           message={error}
           type="error"
           onClose={clearMessages}
@@ -232,14 +372,16 @@ export default function BluetoothSetupScreen() {
       ) : null}
       {success ? (
         <AlertMessage
-          title="Tudo Certo!"
+          title="Sucesso"
           message={success}
           type="success"
           onClose={clearMessages}
         />
       ) : null}
 
-      {step === "scan" ? renderScanStep() : renderWifiStep()}
+      {step === "connected" && renderConnectedStep()}
+      {step === "scan" && renderScanStep()}
+      {step === "wifi" && renderWifiStep()}
     </ScrollView>
   );
 }
@@ -254,14 +396,13 @@ const ChevronRightIcon = () => (
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingVertical: 40 },
+  content: { paddingVertical: 24 },
 
   stepContainer: { flex: 1 },
 
   radarHeader: {
     alignItems: "center",
     marginBottom: 32,
-    paddingHorizontal: 16,
     paddingTop: 16,
   },
   radarIconBox: {
@@ -340,5 +481,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 24,
+  },
+
+  detailsContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 4,
   },
 });

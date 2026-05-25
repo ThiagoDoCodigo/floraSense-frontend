@@ -2,28 +2,46 @@ import { View, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Leaf, Plus } from "lucide-react-native";
 
-import {
-  Header,
-  ActionButton,
-  colors,
-  AlertMessage,
-  Typography,
-} from "react-native-th-components";
+import { Button, colors, AlertMessage } from "react-native-th-components";
 import { usePlantListViewModel } from "../viewModels/plants.viewModel";
-import type { Plant } from "../models/plant.model";
+import { Plant, PlantPhaseEnum } from "../models/plant.model";
 import { EmptyState } from "../../../components/EmptyState";
 import CustomCard from "../../../components/CustomCard";
+import { phaseTranslations } from "../utils/translatePlantValues";
+import { LoadingIndicator } from "../../../components/LoadingIndicator";
+import { ErrorIndicator } from "../../../components/ErrorIndicator";
 
 export default function PlantListScreen() {
   const navigation = useNavigation<any>();
   const { plants, loading, loadingMore, error, loadMore, refresh, clearError } =
     usePlantListViewModel();
 
+  if (loading && plants.length === 0) {
+    return (
+      <LoadingIndicator
+        message="Carregando seu cultivo..."
+        subMessage="Buscando informações das suas plantas"
+        fullScreen={true}
+      />
+    );
+  }
+
+  if (error && plants.length === 0) {
+    return (
+      <ErrorIndicator
+        title="Oops! Falha na conexão"
+        message={error}
+        onRetry={() => refresh()}
+        fullScreen={true}
+      />
+    );
+  }
+
   const renderItem = ({ item }: { item: Plant }) => (
     <CustomCard
       title={item.name}
-      description={item.scientificName}
-      subDescription={`Espécie: ${item.species}`}
+      description={phaseTranslations[item.phaseOfLife as PlantPhaseEnum]}
+      subDescription={`Espécie: ${item.especie}`}
       subIcon={Leaf}
       image={item.imageUrl}
       bottomButtonText="Acessar Diagnósticos"
@@ -35,20 +53,14 @@ export default function PlantListScreen() {
 
   return (
     <View style={styles.container}>
-      {error ? (
+      {error && plants.length > 0 ? (
         <AlertMessage
-          title="Erro"
+          title="Atenção"
           message={error}
           type="error"
           onClose={clearError}
         />
       ) : null}
-
-      <Header
-        title="Meu Cultivo"
-        subtitle="Monitoramento autônomo ativo"
-        icon={Leaf}
-      />
 
       <View style={styles.content}>
         <FlatList
@@ -58,7 +70,7 @@ export default function PlantListScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           onRefresh={refresh}
-          refreshing={loading}
+          refreshing={loading && plants.length > 0}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
@@ -71,16 +83,18 @@ export default function PlantListScreen() {
             ) : null
           }
           ListEmptyComponent={
-            <EmptyState
-              title="Seu cultivo está vazio"
-              message="Toque em 'Adicionar Nova Planta' para começar a monitorar."
-            />
+            !loading ? (
+              <EmptyState
+                title="Seu cultivo está vazio"
+                message="Toque em 'Adicionar Nova Planta' para começar a monitorar."
+              />
+            ) : null
           }
         />
       </View>
 
       <View style={styles.footer}>
-        <ActionButton
+        <Button
           label="Adicionar Nova Planta"
           iconPosition="left"
           icon={Plus}
@@ -92,11 +106,10 @@ export default function PlantListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, paddingTop: 16 },
   content: { flex: 1 },
   listContent: { paddingBottom: 24 },
   loader: { marginVertical: 16 },
-  emptyState: { alignItems: "center", marginTop: 40 },
   footer: {
     paddingVertical: 12,
     borderTopWidth: 1,
