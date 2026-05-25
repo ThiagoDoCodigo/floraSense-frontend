@@ -1,6 +1,6 @@
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { KeyRound, Lock, ArrowLeft, KeyRoundIcon } from "lucide-react-native";
+import { Lock, KeyRoundIcon } from "lucide-react-native";
 
 import {
   InputField,
@@ -15,23 +15,28 @@ import { useProfileViewModel } from "../viewModels/profile.viewModel";
 export default function ChangePasswordScreen() {
   const navigation = useNavigation<any>();
   const {
-    viewModel,
     currentPassword,
+    setCurrentPassword,
     newPassword,
+    setNewPassword,
     confirmNewPassword,
+    setConfirmNewPassword,
     error,
+    clearError,
     success,
+    clearSuccess,
     fieldErrors,
+    performChangePassword,
   } = useProfileViewModel();
 
   const handlePasswordChange = async () => {
     try {
-      await viewModel.performChangePassword();
+      await performChangePassword();
       setTimeout(() => {
         navigation.goBack();
       }, 2000);
     } catch (e) {
-      throw error;
+      throw e;
     }
   };
 
@@ -42,7 +47,7 @@ export default function ChangePasswordScreen() {
           title="Erro"
           message={error}
           type="error"
-          onClose={() => viewModel.clearError()}
+          onClose={clearError}
         />
       ) : null}
 
@@ -51,7 +56,7 @@ export default function ChangePasswordScreen() {
           title="Senha Atualizada"
           message={success}
           type="success"
-          onClose={() => viewModel.clearSuccess()}
+          onClose={clearSuccess}
         />
       ) : null}
 
@@ -66,7 +71,8 @@ export default function ChangePasswordScreen() {
             align="center"
           >
             Para sua segurança, informe sua senha atual antes de definir uma
-            nova. A nova senha deve ter no mínimo 6 caracteres.
+            nova. A nova senha não pode ser igual à atual e deve ter no mínimo 6
+            caracteres.
           </Typography>
         </View>
 
@@ -75,7 +81,7 @@ export default function ChangePasswordScreen() {
           icon={Lock}
           placeholder="Sua senha antiga"
           value={currentPassword}
-          onChangeText={(text) => viewModel.setCurrentPassword(text)}
+          onChangeText={setCurrentPassword}
           secureTextEntry
           error={fieldErrors.currentPassword}
         />
@@ -87,7 +93,7 @@ export default function ChangePasswordScreen() {
           icon={Lock}
           placeholder="Mínimo de 6 caracteres"
           value={newPassword}
-          onChangeText={(text) => viewModel.setNewPassword(text)}
+          onChangeText={setNewPassword}
           secureTextEntry
           error={fieldErrors.newPassword}
         />
@@ -97,7 +103,7 @@ export default function ChangePasswordScreen() {
           icon={Lock}
           placeholder="Repita a nova senha"
           value={confirmNewPassword}
-          onChangeText={(text) => viewModel.setConfirmNewPassword(text)}
+          onChangeText={setConfirmNewPassword}
           secureTextEntry
           error={fieldErrors.confirmNewPassword}
         />

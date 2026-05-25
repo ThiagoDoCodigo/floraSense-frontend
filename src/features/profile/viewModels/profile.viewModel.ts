@@ -1,302 +1,177 @@
 import { useState, useEffect } from "react";
 import profileService from "../services/profile.service";
-import type { UserProfile } from "../models/profile.model";
+import { useAuth } from "../../../contexts/AuthContext";
 
-export class ProfileViewModel {
-  private _name = "";
-  private _email = "";
-  private _avatarUrl = "";
+export const useProfileViewModel = () => {
+  const { user, updateUserProfile, signOut } = useAuth();
 
-  private _currentPassword = "";
-  private _newPassword = "";
-  private _confirmNewPassword = "";
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
-  private _error = "";
-  private _success = "";
-  private _fieldErrors: {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
     name?: string;
     email?: string;
     currentPassword?: string;
     newPassword?: string;
     confirmNewPassword?: string;
-  } = {};
+  }>({});
 
-  private setNameCallback: ((n: string) => void) | null = null;
-  private setEmailCallback: ((e: string) => void) | null = null;
-  private setAvatarUrlCallback: ((url: string) => void) | null = null;
-
-  private setCurrentPasswordCallback: ((p: string) => void) | null = null;
-  private setNewPasswordCallback: ((p: string) => void) | null = null;
-  private setConfirmNewPasswordCallback: ((p: string) => void) | null = null;
-
-  private setErrorCallback: ((err: string) => void) | null = null;
-  private setSuccessCallback: ((msg: string) => void) | null = null;
-  private setFieldErrorsCallback: ((errors: any) => void) | null = null;
-
-  get name() {
-    return this._name;
-  }
-  get email() {
-    return this._email;
-  }
-  get avatarUrl() {
-    return this._avatarUrl;
-  }
-  get currentPassword() {
-    return this._currentPassword;
-  }
-  get newPassword() {
-    return this._newPassword;
-  }
-  get confirmNewPassword() {
-    return this._confirmNewPassword;
-  }
-  get error() {
-    return this._error;
-  }
-  get success() {
-    return this._success;
-  }
-  get fieldErrors() {
-    return this._fieldErrors;
-  }
-
-  setNameListener(cb: any) {
-    this.setNameCallback = cb;
-  }
-  setEmailListener(cb: any) {
-    this.setEmailCallback = cb;
-  }
-  setAvatarUrlListener(cb: any) {
-    this.setAvatarUrlCallback = cb;
-  }
-  setCurrentPasswordListener(cb: any) {
-    this.setCurrentPasswordCallback = cb;
-  }
-  setNewPasswordListener(cb: any) {
-    this.setNewPasswordCallback = cb;
-  }
-  setConfirmNewPasswordListener(cb: any) {
-    this.setConfirmNewPasswordCallback = cb;
-  }
-  setErrorListener(cb: any) {
-    this.setErrorCallback = cb;
-  }
-  setSuccessListener(cb: any) {
-    this.setSuccessCallback = cb;
-  }
-  setFieldErrorsListener(cb: any) {
-    this.setFieldErrorsCallback = cb;
-  }
-
-  setName(n: string) {
-    this._name = n;
-    this.setNameCallback?.(n);
-    this.clearFieldError("name");
-  }
-
-  setEmail(e: string) {
-    this._email = e;
-    this.setEmailCallback?.(e);
-    this.clearFieldError("email");
-  }
-
-  setAvatarUrl(url: string) {
-    this._avatarUrl = url;
-    this.setAvatarUrlCallback?.(url);
-  }
-
-  setCurrentPassword(p: string) {
-    this._currentPassword = p;
-    this.setCurrentPasswordCallback?.(p);
-    this.clearFieldError("currentPassword");
-  }
-
-  setNewPassword(p: string) {
-    this._newPassword = p;
-    this.setNewPasswordCallback?.(p);
-    this.clearFieldError("newPassword");
-  }
-
-  setConfirmNewPassword(p: string) {
-    this._confirmNewPassword = p;
-    this.setConfirmNewPasswordCallback?.(p);
-    this.clearFieldError("confirmNewPassword");
-  }
-
-  private clearFieldError(field: string) {
-    if ((this._fieldErrors as any)[field]) {
-      this._fieldErrors = { ...this._fieldErrors, [field]: undefined };
-      this.setFieldErrorsCallback?.(this._fieldErrors);
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+      setAvatarUrl(user.avatarUrl || "");
     }
-  }
+  }, [user]);
 
-  clearMessages() {
-    this._error = "";
-    this._success = "";
-    this._fieldErrors = {};
-    this.setErrorCallback?.("");
-    this.setSuccessCallback?.("");
-    this.setFieldErrorsCallback?.({});
-  }
+  const clearMessages = () => {
+    setError("");
+    setSuccess("");
+    setFieldErrors({});
+  };
 
-  clearError() {
-    this._error = "";
-    this.setErrorCallback?.("");
-  }
+  const clearFieldError = (field: string) => {
+    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
 
-  clearSuccess() {
-    this._success = "";
-    this.setSuccessCallback?.("");
-  }
-
-  private isValidEmail(email: string): boolean {
+  const isValidEmail = (emailToCheck: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
+    return emailRegex.test(emailToCheck);
+  };
 
-  async loadProfile(): Promise<void> {
-    try {
-      const profile = await profileService.fetchUserProfile();
-      this.setName(profile.name);
-      this.setEmail(profile.email);
-      this.setAvatarUrl(profile.avatarUrl || "");
-    } catch (err: any) {
-      this._error = "Não foi possível carregar os dados do perfil.";
-      this.setErrorCallback?.(this._error);
-    }
-  }
-
-  async performUpdateProfile(): Promise<void> {
-    this.clearMessages();
+  const performUpdateProfile = async (): Promise<void> => {
+    clearMessages();
     const errors: { name?: string; email?: string } = {};
 
-    if (!this._name || this._name.trim().length < 3) {
-      errors.name = "Insira seu nome completo.";
+    if (!name || name.trim().length < 3) {
+      errors.name = "Insira seu nome completo (mín. 3 letras).";
     }
 
-    if (!this._email) {
+    if (!email) {
       errors.email = "O e-mail é obrigatório.";
-    } else if (!this.isValidEmail(this._email)) {
+    } else if (!isValidEmail(email)) {
       errors.email = "Formato de e-mail inválido.";
     }
 
     if (Object.keys(errors).length > 0) {
-      this._fieldErrors = errors;
-      this.setFieldErrorsCallback?.(errors);
+      setFieldErrors(errors);
       throw new Error("Verifique os campos destacados.");
     }
 
     try {
       const updatedProfile = await profileService.updateProfile(
-        this._name,
-        this._email,
-        this._avatarUrl,
+        name.trim(),
+        email.trim(),
+        avatarUrl,
       );
-      this._success = "Perfil atualizado com sucesso!";
-      this.setSuccessCallback?.(this._success);
-      this.setName(updatedProfile.name);
-      this.setEmail(updatedProfile.email);
-      this.setAvatarUrl(updatedProfile.avatarUrl || "");
-    } catch (err: any) {
-      this._error = err.message || "Erro ao atualizar perfil.";
-      this.setErrorCallback?.(this._error);
-      throw err;
-    }
-  }
 
-  async performChangePassword(): Promise<void> {
-    this.clearMessages();
+      if (updateUserProfile) {
+        await updateUserProfile({
+          name: updatedProfile.name,
+          email: updatedProfile.email,
+          avatarUrl: updatedProfile.avatarUrl,
+        });
+      }
+
+      setSuccess("Perfil atualizado com sucesso!");
+    } catch (err: any) {
+      const apiError =
+        err?.response?.data?.message || "Erro ao atualizar perfil.";
+      setError(apiError);
+      throw new Error(apiError);
+    }
+  };
+
+  const performChangePassword = async (): Promise<void> => {
+    clearMessages();
     const errors: {
       currentPassword?: string;
       newPassword?: string;
       confirmNewPassword?: string;
     } = {};
 
-    if (!this._currentPassword) {
+    if (!currentPassword) {
       errors.currentPassword = "Digite sua senha atual.";
     }
 
-    if (!this._newPassword) {
+    if (!newPassword) {
       errors.newPassword = "Digite uma nova senha.";
-    } else if (this._newPassword.length < 6) {
+    } else if (newPassword.length < 6) {
       errors.newPassword = "A nova senha deve ter pelo menos 6 caracteres.";
+    } else if (newPassword === currentPassword) {
+      errors.newPassword = "A nova senha não pode ser igual à atual.";
     }
 
-    if (!this._confirmNewPassword) {
+    if (!confirmNewPassword) {
       errors.confirmNewPassword = "Confirme sua nova senha.";
-    } else if (this._newPassword !== this._confirmNewPassword) {
+    } else if (newPassword !== confirmNewPassword) {
       errors.confirmNewPassword = "As senhas não coincidem.";
     }
 
     if (Object.keys(errors).length > 0) {
-      this._fieldErrors = errors;
-      this.setFieldErrorsCallback?.(errors);
+      setFieldErrors(errors);
       throw new Error("Verifique os campos destacados.");
     }
 
     try {
-      await profileService.changePassword(
-        this._currentPassword,
-        this._newPassword,
-      );
-      this._success = "Senha alterada com segurança!";
-      this.setSuccessCallback?.(this._success);
-      this.setCurrentPassword("");
-      this.setNewPassword("");
-      this.setConfirmNewPassword("");
+      await profileService.changePassword(currentPassword, newPassword);
+      setSuccess("Senha alterada com segurança!");
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
     } catch (err: any) {
-      this._error = err.message || "Erro ao alterar a senha.";
-      this.setErrorCallback?.(this._error);
-      throw err;
+      const apiError =
+        err?.response?.data?.message || "Erro ao alterar a senha.";
+      setError(apiError);
+      throw new Error(apiError);
     }
-  }
-}
-
-export const useProfileViewModel = () => {
-  const [viewModel] = useState(() => new ProfileViewModel());
-  const [name, setName] = useState(viewModel.name);
-  const [email, setEmail] = useState(viewModel.email);
-  const [avatarUrl, setAvatarUrl] = useState(viewModel.avatarUrl);
-
-  const [currentPassword, setCurrentPassword] = useState(
-    viewModel.currentPassword,
-  );
-  const [newPassword, setNewPassword] = useState(viewModel.newPassword);
-  const [confirmNewPassword, setConfirmNewPassword] = useState(
-    viewModel.confirmNewPassword,
-  );
-
-  const [error, setError] = useState(viewModel.error);
-  const [success, setSuccess] = useState(viewModel.success);
-  const [fieldErrors, setFieldErrors] = useState(viewModel.fieldErrors);
-
-  useEffect(() => {
-    viewModel.setNameListener(setName);
-    viewModel.setEmailListener(setEmail);
-    viewModel.setAvatarUrlListener(setAvatarUrl);
-
-    viewModel.setCurrentPasswordListener(setCurrentPassword);
-    viewModel.setNewPasswordListener(setNewPassword);
-    viewModel.setConfirmNewPasswordListener(setConfirmNewPassword);
-
-    viewModel.setErrorListener(setError);
-    viewModel.setSuccessListener(setSuccess);
-    viewModel.setFieldErrorsListener(setFieldErrors);
-
-    viewModel.loadProfile();
-  }, [viewModel]);
+  };
 
   return {
-    viewModel,
+    user,
     name,
+    setName: (n: string) => {
+      setName(n);
+      clearFieldError("name");
+    },
     email,
+    setEmail: (e: string) => {
+      setEmail(e);
+      clearFieldError("email");
+    },
     avatarUrl,
+    setAvatarUrl,
     currentPassword,
+    setCurrentPassword: (p: string) => {
+      setCurrentPassword(p);
+      clearFieldError("currentPassword");
+    },
     newPassword,
+    setNewPassword: (p: string) => {
+      setNewPassword(p);
+      clearFieldError("newPassword");
+    },
     confirmNewPassword,
+    setConfirmNewPassword: (p: string) => {
+      setConfirmNewPassword(p);
+      clearFieldError("confirmNewPassword");
+    },
     error,
     success,
     fieldErrors,
+    clearError: () => setError(""),
+    clearSuccess: () => setSuccess(""),
+    clearMessages,
+    performUpdateProfile,
+    performChangePassword,
+    logout: signOut,
   };
 };

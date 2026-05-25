@@ -1,4 +1,3 @@
-import React from "react";
 import {
   View,
   StyleSheet,
@@ -28,23 +27,43 @@ import { useProfileViewModel } from "../viewModels/profile.viewModel";
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
-  const { viewModel, name, email, avatarUrl, error, success, fieldErrors } =
-    useProfileViewModel();
+  const {
+    user,
+    name,
+    setName,
+    email,
+    setEmail,
+    avatarUrl,
+    error,
+    clearError,
+    success,
+    clearSuccess,
+    fieldErrors,
+    performUpdateProfile,
+    logout,
+  } = useProfileViewModel();
 
   const handleUpdate = async () => {
     try {
-      await viewModel.performUpdateProfile();
+      await performUpdateProfile();
     } catch (e) {
-      throw error;
+      throw e;
     }
   };
 
   const handleChangePhoto = () => {
-    console.log("Abrir galeria de imagens");
+    console.log("Abrir galeria de imagens (Integração futura)");
   };
 
-  const handleLogout = () => {
-    navigation.reset({ index: 0, routes: [{ name: "AuthFlow" }] });
+  const handleLogout = async () => {
+    try {
+      if (logout) {
+        await logout();
+      }
+      navigation.reset({ index: 0, routes: [{ name: "AuthFlow" }] });
+    } catch (e) {
+      console.error("Erro ao encerrar sessão:", e);
+    }
   };
 
   return (
@@ -54,7 +73,7 @@ export default function ProfileScreen() {
           title="Atenção"
           message={error}
           type="error"
-          onClose={() => viewModel.clearError()}
+          onClose={clearError}
         />
       ) : null}
 
@@ -63,7 +82,7 @@ export default function ProfileScreen() {
           title="Sucesso!"
           message={success}
           type="success"
-          onClose={() => viewModel.clearSuccess()}
+          onClose={clearSuccess}
         />
       ) : null}
 
@@ -82,7 +101,7 @@ export default function ProfileScreen() {
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Typography variant="h1" color={colors.primary.main}>
-                  {name ? name.charAt(0).toUpperCase() : "U"}
+                  {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
                 </Typography>
               </View>
             )}
@@ -96,10 +115,10 @@ export default function ProfileScreen() {
             color={colors.text.primary}
             style={{ marginTop: 16 }}
           >
-            {name || "Seu Nome"}
+            {user?.name || "Seu Nome"}
           </Typography>
           <Typography variant="body" color={colors.text.secondary}>
-            {email || "seuemail@exemplo.com"}
+            {user?.email || "seuemail@exemplo.com"}
           </Typography>
         </View>
 
@@ -118,7 +137,7 @@ export default function ProfileScreen() {
               label="Nome Completo"
               icon={User}
               value={name}
-              onChangeText={(text) => viewModel.setName(text)}
+              onChangeText={setName}
               autoCapitalize="words"
               error={fieldErrors.name}
             />
@@ -126,7 +145,7 @@ export default function ProfileScreen() {
               label="E-mail de Acesso"
               icon={Mail}
               value={email}
-              onChangeText={(text) => viewModel.setEmail(text)}
+              onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               error={fieldErrors.email}
