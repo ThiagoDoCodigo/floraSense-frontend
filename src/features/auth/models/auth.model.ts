@@ -14,12 +14,14 @@ export type LoginRequestDTO = {
   password: string;
 };
 
-export type AuthUserResponseDTO = {
-  id: string;
+export interface AuthUserResponseDTO {
+  id_user: string;
   name: string;
   email: string;
   role: string;
-};
+  avatarUrl?: string;
+  token: string;
+}
 
 export type AuthResponseDTO = {
   tokens: TokensResponseDTO;

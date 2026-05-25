@@ -32,7 +32,7 @@ const createNestedStack = (routes: any[]) => {
             name={route.name}
             component={WithMainLayout(route.component)}
             options={({ navigation }: any) => ({
-              headerTitleAlign: index === 0 ? "left" : "center",
+              headerTitleAlign: index === 0 ? "left" : "left",
               headerTitle: () => (
                 <View style={[styles.customHeaderContainer]}>
                   {route.icon && (

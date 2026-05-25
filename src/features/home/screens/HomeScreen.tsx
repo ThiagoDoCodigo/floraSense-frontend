@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   seeAllButton: { flexDirection: "row", alignItems: "center" },
-  alertsContainer: { gap: 12, marginBottom: 32 },
+  alertsContainer: { gap: 12, marginBottom: 16 },
   emptyAlerts: {
     backgroundColor: colors.surface,
     padding: 24,

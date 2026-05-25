@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useState,
   useEffect,
@@ -18,6 +18,9 @@ interface AuthContextData {
   signIn: (data: LoginRequestDTO) => Promise<void>;
   signUp: (data: PublicCreateUserDTO) => Promise<void>;
   signOut: () => Promise<void>;
+  updateUserProfile: (
+    updatedData: Partial<AuthUserResponseDTO>,
+  ) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -52,8 +55,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   }
 
+  async function updateUserProfile(updatedData: Partial<AuthUserResponseDTO>) {
+    if (user) {
+      const newUser = { ...user, ...updatedData };
+      setUser(newUser);
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, signIn, signUp, signOut, updateUserProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );
