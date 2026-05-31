@@ -1,7 +1,6 @@
 import { View, StyleSheet, ScrollView } from "react-native";
-import { useRoute } from "@react-navigation/native";
-import { Droplets, Clock } from "lucide-react-native";
-
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { Clock, RefreshCw, RadioTower } from "lucide-react-native";
 import {
   InputField,
   ActionButton,
@@ -10,29 +9,67 @@ import {
   AlertMessage,
 } from "react-native-th-components";
 import { useManualControlViewModel } from "../viewModels/plants.viewModel";
+import { InteractionManager } from "react-native";
+import { useState, useEffect } from "react";
+import { LoadingIndicator } from "../../../components/LoadingIndicator";
 
 export default function ManualControlScreen() {
   const route = useRoute<any>();
-  const { plantId } = route.params;
-
+  const navigation = useNavigation<any>();
+  const { plantId, delayReading } = route.params;
+  const [isReady, setIsReady] = useState(false);
   const {
-    volume,
-    setVolume,
     interval,
     setInterval,
     loadingAction,
     error,
     success,
-    waterPlant,
     updateInterval,
+    forceReading,
     clearMessages,
-  } = useManualControlViewModel(plantId);
+  } = useManualControlViewModel(plantId, delayReading);
+
+  const handleUpdateDelay = async () => {
+    try {
+      await updateInterval();
+    } catch (e) {
+      throw e;
+    }
+  };
+
+  const handleForceRead = async () => {
+    try {
+      await forceReading();
+      setTimeout(() => {
+        if (navigation.canGoBack()) navigation.goBack();
+      }, 2500);
+    } catch (e) {
+      throw e;
+    }
+  };
+
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setIsReady(true);
+    });
+    return () => task.cancel();
+  }, []);
+
+  if (!isReady) {
+    return (
+      <LoadingIndicator
+        message="Carregando comandos..."
+        subMessage="Aguarde um momento"
+        fullScreen={true}
+      />
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {error ? (
         <AlertMessage
-          title="Falha no Comando"
+          title="Dispositivo Offline ou Ocupado"
           message={error}
           type="error"
           onClose={clearMessages}
@@ -40,7 +77,7 @@ export default function ManualControlScreen() {
       ) : null}
       {success ? (
         <AlertMessage
-          title="Comando Recebido"
+          title="Comando Enviado"
           message={success}
           type="success"
           onClose={clearMessages}
@@ -49,9 +86,9 @@ export default function ManualControlScreen() {
 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Droplets size={24} color={colors.info.main} />
+          <Clock size={24} color={colors.warning.main} />
           <Typography variant="title" style={{ marginLeft: 8 }}>
-            Acionamento da Bomba
+            Intervalo de Medição
           </Typography>
         </View>
         <Typography
@@ -59,31 +96,33 @@ export default function ManualControlScreen() {
           color={colors.text.secondary}
           style={{ marginBottom: 16 }}
         >
-          Acione a bomba d'água remotamente via MQTT. O sensor de fluxo cortará
-          a energia quando o volume for atingido.
+          Escolha de quanto em quanto tempo o dispositivo deve verificar a saúde
+          da sua planta e atualizar os dados no aplicativo.
         </Typography>
 
         <InputField
-          label="Volume de Água (ml)"
-          value={volume}
-          onChangeText={setVolume}
+          label="Tempo em Minutos (Mínimo: 15)"
+          value={interval}
+          onChangeText={setInterval}
           keyboardType="numeric"
-          placeholder="Ex: 200"
+          placeholder="Exemplo: 480 (para 8 horas)"
+          editable={loadingAction === null}
         />
         <ActionButton
-          label="Irrigar Agora"
-          onPress={waterPlant}
-          loadingLabel="Enviando comando..."
+          label="Salvar Novo Intervalo"
+          onPress={handleUpdateDelay}
+          loadingLabel="Enviando para o dispositivo..."
+          icon={Clock}
           iconPosition="right"
-          icon={Droplets}
+          errorLabel="Dispositivo Offline ou Ocupado"
         />
       </View>
 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Clock size={24} color={colors.warning.main} />
+          <RadioTower size={24} color={colors.info.main} />
           <Typography variant="title" style={{ marginLeft: 8 }}>
-            Ciclo de Diagnóstico
+            Leitura Imediata
           </Typography>
         </View>
         <Typography
@@ -91,23 +130,17 @@ export default function ManualControlScreen() {
           color={colors.text.secondary}
           style={{ marginBottom: 16 }}
         >
-          De quanto em quanto tempo o ESP32 deve acordar, ler os sensores, tirar
-          foto e enviar para a IA?
+          Solicite que o dispositivo verifique como a planta está agora mesmo,
+          sem precisar esperar o tempo do próximo intervalo automático.
         </Typography>
 
-        <InputField
-          label="Intervalo em Minutos"
-          value={interval}
-          onChangeText={setInterval}
-          keyboardType="numeric"
-          placeholder="Ex: 60"
-        />
         <ActionButton
-          label="Salvar Ciclo"
-          onPress={updateInterval}
-          loadingLabel="Atualizando hardware..."
-          icon={Clock}
-          iconPosition="right"
+          label="Verificar Planta Agora"
+          onPress={handleForceRead}
+          loadingLabel="Lendo os sensores..."
+          icon={RefreshCw}
+          variant="outline"
+          errorLabel="Dispositivo Offline ou Ocupado"
         />
       </View>
     </ScrollView>
@@ -116,7 +149,7 @@ export default function ManualControlScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingVertical: 32 },
+  content: { paddingVertical: 16 },
   card: {
     backgroundColor: colors.surface,
     padding: 16,

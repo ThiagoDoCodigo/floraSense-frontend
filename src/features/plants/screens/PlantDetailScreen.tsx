@@ -16,6 +16,11 @@ import {
   Bluetooth,
   PenLine,
   Clock,
+  CloudRain,
+  AlertTriangle,
+  AlertCircle,
+  Leaf,
+  Sparkles,
 } from "lucide-react-native";
 
 import { Typography, colors, AlertMessage } from "react-native-th-components";
@@ -25,6 +30,42 @@ import { EmptyState } from "../../../components/EmptyState";
 import { phaseTranslations } from "../utils/translatePlantValues";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
+import React from "react";
+import { LevelUrgentEnum } from "../../home/models/home.model";
+
+const getUrgencyConfig = (level: LevelUrgentEnum | null) => {
+  switch (level) {
+    case "CRITICAL":
+      return {
+        accent: colors.danger.main,
+        bg: colors.danger.faded,
+        Icon: AlertTriangle,
+        label: "Crítico",
+      };
+    case "HIGH":
+      return {
+        accent: colors.warning.main,
+        bg: colors.warning.faded,
+        Icon: AlertCircle,
+        label: "Atenção",
+      };
+    case "MEDIUM":
+      return {
+        accent: colors.info.main,
+        bg: colors.info.light,
+        Icon: Sparkles,
+        label: "Moderado",
+      };
+    case "LOW":
+    default:
+      return {
+        accent: colors.primary.main,
+        bg: colors.primary.faded,
+        Icon: Leaf,
+        label: "Estável",
+      };
+  }
+};
 
 export default function PlantDetailScreen() {
   const route = useRoute<any>();
@@ -134,7 +175,12 @@ export default function PlantDetailScreen() {
           <TouchableOpacity
             style={styles.controlWidget}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate("ManualControl", { plantId })}
+            onPress={() =>
+              navigation.navigate("ManualControl", {
+                plantId,
+                delayReading: plant.delayReading,
+              })
+            }
           >
             <View
               style={[
@@ -191,11 +237,36 @@ export default function PlantDetailScreen() {
                   ÚLTIMA LEITURA
                 </Typography>
               </View>
+
+              {latestReading.isUrgent &&
+                (() => {
+                  const liveUrgency = getUrgencyConfig(
+                    latestReading.levelUrgent,
+                  );
+                  return (
+                    <View
+                      style={[
+                        styles.urgencyBadge,
+                        { backgroundColor: liveUrgency.bg },
+                      ]}
+                    >
+                      <liveUrgency.Icon size={14} color={liveUrgency.accent} />
+                      <Typography
+                        variant="caption"
+                        weight="bold"
+                        color={liveUrgency.accent}
+                        style={{ marginLeft: 4 }}
+                      >
+                        {liveUrgency.label}
+                      </Typography>
+                    </View>
+                  );
+                })()}
             </View>
 
             <View style={styles.liveGrid}>
               <View style={styles.liveItem}>
-                <Droplets size={22} color={colors.info.main} />
+                <Droplets size={20} color={colors.info.main} />
                 <Typography
                   variant="h2"
                   color={colors.text.primary}
@@ -204,12 +275,12 @@ export default function PlantDetailScreen() {
                   {latestReading.soilMoisture}%
                 </Typography>
                 <Typography variant="caption" color={colors.text.secondary}>
-                  Umidade
+                  Umid. do Solo
                 </Typography>
               </View>
               <View style={styles.liveDivider} />
               <View style={styles.liveItem}>
-                <Thermometer size={22} color={colors.warning.main} />
+                <Thermometer size={20} color={colors.warning.main} />
                 <Typography
                   variant="h2"
                   color={colors.text.primary}
@@ -218,12 +289,26 @@ export default function PlantDetailScreen() {
                   {latestReading.temperature}°C
                 </Typography>
                 <Typography variant="caption" color={colors.text.secondary}>
-                  Ar
+                  Temperatura
                 </Typography>
               </View>
               <View style={styles.liveDivider} />
               <View style={styles.liveItem}>
-                <Activity size={22} color={colors.success.main} />
+                <CloudRain size={20} color={colors.primary.main} />
+                <Typography
+                  variant="h2"
+                  color={colors.text.primary}
+                  style={styles.liveValue}
+                >
+                  {latestReading.airHumidity}%
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  Umid. do Ar
+                </Typography>
+              </View>
+              <View style={styles.liveDivider} />
+              <View style={styles.liveItem}>
+                <Activity size={20} color={colors.success.main} />
                 <Typography
                   variant="h2"
                   color={colors.text.primary}
@@ -237,6 +322,34 @@ export default function PlantDetailScreen() {
                 </Typography>
               </View>
             </View>
+
+            {latestReading.parametersIdeas && (
+              <View
+                style={[
+                  styles.parametersBox,
+                  {
+                    marginTop: 20,
+                    marginBottom: 0,
+                    backgroundColor: colors.surfaceHighlight,
+                  },
+                ]}
+              >
+                <Typography
+                  variant="caption"
+                  color={colors.text.secondary}
+                  style={{ marginLeft: 10, flex: 1, lineHeight: 18 }}
+                >
+                  <Typography
+                    variant="caption"
+                    weight="bold"
+                    color={colors.text.primary}
+                  >
+                    Parâmetros Ideais:{"\n"}
+                  </Typography>
+                  {latestReading.parametersIdeas}
+                </Typography>
+              </View>
+            )}
           </View>
         )}
 
@@ -249,104 +362,154 @@ export default function PlantDetailScreen() {
     );
   };
 
-  const renderReading = ({ item }: { item: SensorReading }) => (
-    <View style={styles.reportCard}>
-      <View style={styles.reportHeader}>
-        <View style={styles.reportTimeBox}>
-          <Clock size={14} color={colors.text.secondary} />
+  const renderReading = ({ item }: { item: SensorReading }) => {
+    const urgency = item.isUrgent ? getUrgencyConfig(item.levelUrgent) : null;
+
+    return (
+      <View style={styles.reportCard}>
+        <View style={styles.reportHeader}>
+          <View style={styles.reportTimeBox}>
+            <Clock size={14} color={colors.text.secondary} />
+            <Typography
+              variant="caption"
+              weight="bold"
+              color={colors.text.secondary}
+              style={{ marginLeft: 6 }}
+            >
+              {new Date(item.created_at).toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "long",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Typography>
+          </View>
+
+          {urgency && (
+            <View
+              style={[styles.urgencyBadge, { backgroundColor: urgency.bg }]}
+            >
+              <urgency.Icon size={12} color={urgency.accent} />
+              <Typography
+                variant="caption"
+                weight="bold"
+                color={urgency.accent}
+                style={{ marginLeft: 4, fontSize: 10 }}
+              >
+                {urgency.label}
+              </Typography>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.reportTelemetry}>
+          <View style={styles.reportTelemetryItem}>
+            <Droplets size={16} color={colors.info.main} />
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.text.primary}
+              style={{ marginLeft: 6 }}
+            >
+              {item.soilMoisture}%
+            </Typography>
+          </View>
+          <View style={styles.reportTelemetryItem}>
+            <Thermometer size={16} color={colors.warning.main} />
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.text.primary}
+              style={{ marginLeft: 6 }}
+            >
+              {item.temperature}°C
+            </Typography>
+          </View>
+          <View style={styles.reportTelemetryItem}>
+            <CloudRain size={16} color={colors.primary.main} />
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.text.primary}
+              style={{ marginLeft: 6 }}
+            >
+              {item.airHumidity}%
+            </Typography>
+          </View>
+          <View style={styles.reportTelemetryItem}>
+            <Activity size={16} color={colors.success.main} />
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.text.primary}
+              style={{ marginLeft: 6 }}
+            >
+              {item.nitrogen}-{item.phosphorus}-{item.potassium}
+            </Typography>
+          </View>
+        </View>
+
+        <View style={styles.dashedDivider} />
+
+        <View style={styles.aiSection}>
+          <View style={styles.aiTitleRow}>
+            <BrainCircuit size={18} color={colors.primary.main} />
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.primary.main}
+              style={{ marginLeft: 8 }}
+            >
+              Diagnóstico
+            </Typography>
+          </View>
           <Typography
-            variant="caption"
-            weight="bold"
+            variant="body"
             color={colors.text.secondary}
-            style={{ marginLeft: 6 }}
+            style={styles.aiText}
           >
-            {new Date(item.created_at).toLocaleString("pt-BR", {
-              day: "2-digit",
-              month: "long",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {item.aiDiagnosis}
           </Typography>
+
+          {item.parametersIdeas && (
+            <View style={styles.parametersBox}>
+              <Typography
+                variant="caption"
+                color={colors.text.primary}
+                style={{ marginLeft: 8, flex: 1, lineHeight: 18 }}
+              >
+                <Typography
+                  variant="caption"
+                  weight="bold"
+                  color={colors.primary.main}
+                >
+                  Parâmetros Ideais:{" "}
+                </Typography>
+                {item.parametersIdeas}
+              </Typography>
+            </View>
+          )}
+
+          <View style={styles.recommendationBox}>
+            <Typography
+              variant="caption"
+              weight="bold"
+              color={colors.text.primary}
+            >
+              SUGESTÃO DO SISTEMA
+            </Typography>
+            <Typography
+              variant="body"
+              color={colors.text.secondary}
+              style={{ marginTop: 4 }}
+            >
+              {item.actionRecommended}
+            </Typography>
+          </View>
         </View>
       </View>
-
-      <View style={styles.reportTelemetry}>
-        <View style={styles.reportTelemetryItem}>
-          <Droplets size={16} color={colors.info.main} />
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.text.primary}
-            style={{ marginLeft: 6 }}
-          >
-            {item.soilMoisture}%
-          </Typography>
-        </View>
-        <View style={styles.reportTelemetryItem}>
-          <Thermometer size={16} color={colors.warning.main} />
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.text.primary}
-            style={{ marginLeft: 6 }}
-          >
-            {item.temperature}°C
-          </Typography>
-        </View>
-        <View style={styles.reportTelemetryItem}>
-          <Activity size={16} color={colors.success.main} />
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.text.primary}
-            style={{ marginLeft: 6 }}
-          >
-            {item.nitrogen}-{item.phosphorus}-{item.potassium}
-          </Typography>
-        </View>
-      </View>
-
-      <View style={styles.dashedDivider} />
-
-      <View style={styles.aiSection}>
-        <View style={styles.aiTitleRow}>
-          <BrainCircuit size={18} color={colors.primary.main} />
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.primary.main}
-            style={{ marginLeft: 8 }}
-          >
-            Diagnóstico
-          </Typography>
-        </View>
-        <Typography
-          variant="body"
-          color={colors.text.secondary}
-          style={styles.aiText}
-        >
-          {item.aiDiagnosis}
-        </Typography>
-
-        <View style={styles.recommendationBox}>
-          <Typography
-            variant="caption"
-            weight="bold"
-            color={colors.text.primary}
-          >
-            SUGESTÃO DO SISTEMA
-          </Typography>
-          <Typography
-            variant="body"
-            color={colors.text.secondary}
-            style={{ marginTop: 4 }}
-          >
-            {item.actionRecommended}
-          </Typography>
-        </View>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -546,5 +709,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  urgencyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 100,
+  },
+  parametersBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.background,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
   },
 });

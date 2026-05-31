@@ -48,7 +48,7 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
       try {
         const [indicators, urgentData] = await Promise.all([
           dashboardService.getIndicators(),
-          dashboardService.getUrgentAlerts(1, 2),
+          dashboardService.getUrgentAlerts(1, 1),
         ]);
         setSummary(indicators);
         setAlerts(urgentData.data);

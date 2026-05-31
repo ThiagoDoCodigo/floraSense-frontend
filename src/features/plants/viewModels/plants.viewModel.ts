@@ -10,6 +10,17 @@ import {
   SubstrateTypeEnum,
 } from "../models/plant.model";
 import { useFocusEffect } from "@react-navigation/native";
+import { BleManager, Device } from "react-native-ble-plx";
+import base64 from "react-native-base64";
+import * as Location from "expo-location";
+import { useAuth } from "../../../contexts/AuthContext";
+import { Platform } from "react-native";
+
+let bleManager: BleManager | null = null;
+
+if (Platform.OS !== "web") {
+  bleManager = new BleManager();
+}
 
 export const usePlantListViewModel = () => {
   const [plants, setPlants] = useState<Plant[]>([]);
@@ -316,13 +327,14 @@ export const useEditPlantViewModel = (initialPlant: Plant | null) => {
   };
 };
 
-export const useManualControlViewModel = (plantId: string) => {
-  const [volume, setVolume] = useState("100");
-  const [interval, setInterval] = useState("60");
+export const useManualControlViewModel = (
+  plantId: string,
+  initialDelay: number = 480,
+) => {
+  const [interval, setIntervalVal] = useState(String(initialDelay) || "480");
   const [loadingAction, setLoadingAction] = useState<
-    "water" | "interval" | null
+    "interval" | "force" | null
   >(null);
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -331,62 +343,77 @@ export const useManualControlViewModel = (plantId: string) => {
     setSuccess("");
   };
 
-  const waterPlant = async () => {
-    if (!plantId) return setError("Planta não identificada.");
+  const updateInterval = async () => {
+    if (!plantId) return;
     clearMessages();
-    setLoadingAction("water");
+    setLoadingAction("interval");
+
+    const intervalNumber = Number(interval);
+    if (isNaN(intervalNumber) || intervalNumber < 15) {
+      setLoadingAction(null);
+      setError(
+        "O intervalo mínimo do hardware é de 15 minutos para evitar superaquecimento do sensor de solo.",
+      );
+      throw new Error("Invalid interval");
+    }
 
     try {
-      await plantService.triggerManualWatering(plantId, Number(volume));
-      setSuccess(`Comando MQTT enviado! Irrigando ${volume}ml.`);
+      await plantService.updateReadingInterval(plantId, intervalNumber);
+      setSuccess(`Enviado! O ESP32 acordará a cada ${interval} minutos.`);
     } catch (err: any) {
-      setError(err?.message ?? "O hardware não respondeu ao comando de rega.");
+      setError(
+        err?.response?.data?.message ??
+          "Falha ao enviar comando. O módulo pode estar offline.",
+      );
+      throw err;
     } finally {
       setLoadingAction(null);
     }
   };
 
-  const updateInterval = async () => {
-    if (!plantId) return setError("Planta não identificada.");
+  const forceReading = async () => {
+    if (!plantId) return;
     clearMessages();
-    setLoadingAction("interval");
+    setLoadingAction("force");
 
     try {
-      await plantService.updateESPConfig(plantId, Number(interval));
-      setSuccess(`O ESP32 agora fará leituras a cada ${interval} min.`);
+      await plantService.forceReading(plantId);
+      setSuccess("Comando emitido! O ESP32 enviará a telemetria em instantes.");
     } catch (err: any) {
       setError(
-        err?.message ?? "Falha ao gravar o novo ciclo no microcontrolador.",
+        err?.response?.data?.message ??
+          "Falha ao forçar leitura. Módulo offline.",
       );
+      throw err;
     } finally {
       setLoadingAction(null);
     }
   };
 
   return {
-    volume,
-    setVolume,
     interval,
-    setInterval,
+    setInterval: setIntervalVal,
     loadingAction,
     error,
     success,
-    waterPlant,
     updateInterval,
+    forceReading,
     clearMessages,
   };
 };
 
 export const useBluetoothSetupViewModel = (plantId: string) => {
+  const { user } = useAuth();
   const [step, setStep] = useState<
     "loading" | "scan" | "wifi" | "connected" | "error"
   >("loading");
-  const [plant, setPlant] = useState<any | null>(null);
+  const [plant, setPlant] = useState<any>(null);
 
   const [isScanning, setIsScanning] = useState(false);
   const [devices, setDevices] = useState<
-    { id: string; name: string; signal: number }[]
+    { id: string; name: string; signal: number; rawDevice: Device }[]
   >([]);
+  const [targetDevice, setTargetDevice] = useState<Device | null>(null);
   const [connectedDevice, setConnectedDevice] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
 
@@ -403,20 +430,16 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
     setSuccess("");
   };
 
-  const scanDevices = useCallback(() => {
-    setIsScanning(true);
-    setDevices([]);
-    clearMessages();
-
-    setTimeout(() => {
-      setDevices([
-        { id: "mac_esp_1", name: "FloraSense-ESP-A2B4", signal: -45 },
-        { id: "mac_tv_1", name: "Smart TV Sala", signal: -80 },
-        { id: "mac_pc_2", name: "Desktop-Thiago", signal: -60 },
-      ]);
-      setIsScanning(false);
-    }, 2000);
-  }, []);
+  const requestPermissions = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      setError(
+        "Permissão de localização negada. O Android exige isso para escanear Bluetooth.",
+      );
+      return false;
+    }
+    return true;
+  };
 
   const loadData = useCallback(async () => {
     setStep("loading");
@@ -432,53 +455,138 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
         scanDevices();
       }
     } catch (err: any) {
-      setError("Não foi possível verificar o status do dispositivo.");
+      setError("Não foi possível verificar o status do dispositivo na nuvem.");
       setStep("error");
     }
-  }, [plantId, scanDevices]);
+  }, [plantId]);
 
   useEffect(() => {
     loadData();
+    return () => {
+      if (bleManager) {
+        bleManager.stopDeviceScan();
+      }
+    };
   }, [loadData]);
 
-  const connectToDevice = (device: { id: string; name: string }) => {
-    setIsConnecting(device.id);
+  const scanDevices = async () => {
+    if (Platform.OS === "web" || !bleManager) {
+      setError(
+        "O Bluetooth não é suportado na versão Web. Teste pelo celular.",
+      );
+      setIsScanning(false);
+      return;
+    }
+
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    setIsScanning(true);
+    setDevices([]);
     clearMessages();
 
-    setTimeout(() => {
-      if (device.name.includes("FloraSense")) {
-        setConnectedDevice(device.name);
-        setStep("wifi");
-      } else {
-        setError("Este dispositivo não é um módulo FloraSense válido.");
+    bleManager.startDeviceScan(null, null, (err, scannedDevice) => {
+      if (err) {
+        setError("Ligue o Bluetooth do celular e tente novamente.");
+        setIsScanning(false);
+        return;
       }
+
+      if (scannedDevice && scannedDevice.name?.includes("FloraSense")) {
+        const validName = scannedDevice.name || "FloraSense";
+
+        setDevices((prev) => {
+          if (prev.some((d) => d.id === scannedDevice.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: scannedDevice.id,
+              name: validName,
+              signal: scannedDevice.rssi || 0,
+              rawDevice: scannedDevice,
+            },
+          ];
+        });
+      }
+    });
+
+    setTimeout(() => {
+      bleManager.stopDeviceScan();
+      setIsScanning(false);
+    }, 8000);
+  };
+
+  const connectToDevice = async (deviceWrap: any) => {
+    setIsConnecting(deviceWrap.id);
+    clearMessages();
+    if (bleManager) {
+      bleManager.stopDeviceScan();
+    }
+    setIsScanning(false);
+
+    try {
+      const device = await deviceWrap.rawDevice.connect({ autoConnect: false });
+      await device.discoverAllServicesAndCharacteristics();
+
+      if (Platform.OS === "android") {
+        await device.requestMTU(512);
+        console.log("MTU expandido com sucesso para envio de JSON!");
+      }
+
+      setTargetDevice(device);
+      setConnectedDevice(device.name);
+      setStep("wifi");
+    } catch (err) {
+      setError("Falha ao comunicar com a placa. Aproxime o celular.");
+    } finally {
       setIsConnecting(null);
-    }, 1500);
+    }
   };
 
   const pairDevice = async (): Promise<boolean> => {
     clearMessages();
     if (!ssid.trim() || !password) {
-      setError("Preencha o nome da rede e a senha.");
+      setError("Preencha a rede Wi-Fi e a senha.");
       throw new Error("Missing credentials");
+    }
+    if (!targetDevice || !user?.id) {
+      setError("Conexão Bluetooth perdida. Volte e pareie novamente.");
+      throw new Error("Device lost");
     }
 
     setPairing(true);
     try {
-      await plantService.pairESP32(plantId, ssid.trim(), password);
+      const payloadObj = {
+        ssid: ssid.trim(),
+        password: password,
+        plantId: plantId,
+        userId: user.id,
+        macAddress: targetDevice.id,
+      };
+      const encodedPayload = base64.encode(JSON.stringify(payloadObj));
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await targetDevice.writeCharacteristicWithoutResponseForService(
+        "4fa2c001-1234-4b2a-bf36-542194689400",
+        "4fa2c002-1234-4b2a-bf36-542194689400",
+        encodedPayload,
+      );
 
       await plantService.connectESP32(plantId, {
-        macAddress: "FC:F5:C4:0B:12:34",
+        macAddress: targetDevice.id,
         firmwareVersion: "v1.0.0",
       });
 
-      setSuccess("Hardware provisionado com sucesso na rede Wi-Fi!");
+      setSuccess(
+        "Hardware provisionado! O ESP32 está reiniciando e se conectando ao Wi-Fi.",
+      );
       return true;
     } catch (err: any) {
       setError(
-        err?.response?.data?.message ??
-          err?.message ??
-          "A comunicação falhou durante o envio das credenciais.",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Falha na transmissão BLE.",
       );
       throw err;
     } finally {
@@ -490,8 +598,6 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
     clearMessages();
     setDisconnecting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
       await plantService.disconnectESP32(plantId);
 
       setSuccess("Dispositivo desvinculado com sucesso.");
@@ -501,8 +607,7 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
       return true;
     } catch (err: any) {
       setError(
-        err?.response?.data?.message ??
-          "Falha ao tentar desvincular o dispositivo.",
+        err?.response?.data?.message || "Falha ao desvincular no servidor.",
       );
       throw err;
     } finally {

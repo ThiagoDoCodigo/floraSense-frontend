@@ -60,19 +60,17 @@ class PlantService {
     return data;
   }
 
-  async pairESP32(
+  async updateReadingInterval(
     plantId: string,
-    ssid: string,
-    password: string,
+    intervalMinutes: number,
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (!ssid || !password) {
-          return reject(new Error("Rede Wi-Fi e senha são obrigatórios."));
-        }
-        resolve();
-      }, 2500);
+    await floraSenseApi.patch(`/plants/${plantId}/interval`, {
+      intervalMinutes,
     });
+  }
+
+  async forceReading(plantId: string): Promise<void> {
+    await floraSenseApi.post(`/plants/${plantId}/force-reading`);
   }
 
   async triggerManualWatering(

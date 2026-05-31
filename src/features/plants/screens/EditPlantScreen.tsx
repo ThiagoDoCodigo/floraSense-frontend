@@ -32,11 +32,15 @@ import {
 
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
+import { InteractionManager } from "react-native";
+import { useState, useEffect } from "react";
+import RenderChip from "../../../components/RenderChip";
 
 export default function EditPlantScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { plant } = route.params;
+  const [isReady, setIsReady] = useState(false);
 
   const {
     name,
@@ -59,6 +63,23 @@ export default function EditPlantScreen() {
     clearMessages,
     fieldErrors,
   } = useEditPlantViewModel(plant);
+
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setIsReady(true);
+    });
+    return () => task.cancel();
+  }, []);
+
+  if (!isReady) {
+    return (
+      <LoadingIndicator
+        message="Preparando edição..."
+        subMessage="Aguarde um momento"
+        fullScreen={true}
+      />
+    );
+  }
 
   if (!plant && !name) {
     return (
@@ -93,26 +114,6 @@ export default function EditPlantScreen() {
   const handleImagePick = () => {
     console.log("Abrir galeria para trocar a foto da planta");
   };
-
-  const renderChip = (
-    label: string,
-    isSelected: boolean,
-    onPress: () => void,
-  ) => (
-    <TouchableOpacity
-      style={[styles.chip, isSelected && styles.chipSelected]}
-      onPress={onPress}
-      activeOpacity={0.8}
-      disabled={saving}
-    >
-      <Typography
-        variant="caption"
-        color={isSelected ? colors.text.inverse : colors.text.primary}
-      >
-        {label}
-      </Typography>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.container}>
@@ -228,13 +229,15 @@ export default function EditPlantScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipScroll}
             >
-              {Object.values(PlantPhaseEnum).map((phase) =>
-                renderChip(
-                  phaseTranslations[phase as PlantPhaseEnum],
-                  phaseOfLife === phase,
-                  () => setPhaseOfLife(phase as PlantPhaseEnum),
-                ),
-              )}
+              {Object.values(PlantPhaseEnum).map((phase) => (
+                <RenderChip
+                  key={phase}
+                  label={phaseTranslations[phase as PlantPhaseEnum]}
+                  isSelected={phaseOfLife === phase}
+                  onPress={() => setPhaseOfLife(phase as PlantPhaseEnum)}
+                  saving={saving}
+                />
+              ))}
             </ScrollView>
 
             <Typography
@@ -250,13 +253,15 @@ export default function EditPlantScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipScroll}
             >
-              {Object.values(EnvironmentTypeEnum).map((env) =>
-                renderChip(
-                  environmentTranslations[env as EnvironmentTypeEnum],
-                  environmentType === env,
-                  () => setEnvironmentType(env as EnvironmentTypeEnum),
-                ),
-              )}
+              {Object.values(EnvironmentTypeEnum).map((env) => (
+                <RenderChip
+                  key={env}
+                  label={environmentTranslations[env as EnvironmentTypeEnum]}
+                  isSelected={environmentType === env}
+                  onPress={() => setEnvironmentType(env as EnvironmentTypeEnum)}
+                  saving={saving}
+                />
+              ))}
             </ScrollView>
 
             <Typography
@@ -272,13 +277,17 @@ export default function EditPlantScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipScroll}
             >
-              {Object.values(SunlightExposureEnum).map((sun) =>
-                renderChip(
-                  sunlightTranslations[sun as SunlightExposureEnum],
-                  sunlightExposure === sun,
-                  () => setSunlightExposure(sun as SunlightExposureEnum),
-                ),
-              )}
+              {Object.values(SunlightExposureEnum).map((sun) => (
+                <RenderChip
+                  key={sun}
+                  label={sunlightTranslations[sun as SunlightExposureEnum]}
+                  isSelected={sunlightExposure === sun}
+                  onPress={() =>
+                    setSunlightExposure(sun as SunlightExposureEnum)
+                  }
+                  saving={saving}
+                />
+              ))}
             </ScrollView>
 
             <Typography
@@ -294,13 +303,15 @@ export default function EditPlantScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipScroll}
             >
-              {Object.values(SubstrateTypeEnum).map((sub) =>
-                renderChip(
-                  substrateTranslations[sub as SubstrateTypeEnum],
-                  substrateType === sub,
-                  () => setSubstrateType(sub as SubstrateTypeEnum),
-                ),
-              )}
+              {Object.values(SubstrateTypeEnum).map((sub) => (
+                <RenderChip
+                  key={sub}
+                  label={substrateTranslations[sub as SubstrateTypeEnum]}
+                  isSelected={substrateType === sub}
+                  onPress={() => setSubstrateType(sub as SubstrateTypeEnum)}
+                  saving={saving}
+                />
+              ))}
             </ScrollView>
           </View>
         </View>
@@ -393,19 +404,6 @@ const styles = StyleSheet.create({
   },
   sectionLabel: { marginTop: 16, marginBottom: 8 },
   chipScroll: { flexDirection: "row", marginBottom: 8 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceHighlight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: 8,
-  },
-  chipSelected: {
-    backgroundColor: colors.primary.main,
-    borderColor: colors.primary.main,
-  },
   footer: {
     paddingVertical: 12,
     borderTopWidth: 1,

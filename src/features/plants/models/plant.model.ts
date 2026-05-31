@@ -40,6 +40,7 @@ export interface Plant {
   macAddress: string | null;
   firmwareVersion: string | null;
   lastConnectionDate: string | null;
+  delayReading: number;
   created_at: string;
   updated_at: string;
 }

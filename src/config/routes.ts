@@ -44,6 +44,27 @@ export const HOME_ROUTES = [
     icon: Leaf,
     component: PlantDetailScreen,
   },
+  {
+    name: "EditPlant",
+    title: "Editar Planta",
+    subtitle: "Atualizar informações",
+    icon: PenLine,
+    component: EditPlantScreen,
+  },
+  {
+    name: "BluetoothSetup",
+    title: "Configuração Bluetooth",
+    subtitle: "Sincronização de hardware",
+    icon: Bluetooth,
+    component: BluetoothSetupScreen,
+  },
+  {
+    name: "ManualControl",
+    title: "Controle Manual",
+    subtitle: "Ajustes remotos do dispositivo",
+    icon: Settings2,
+    component: ManualControlScreen,
+  },
 ];
 
 export const PLANTS_ROUTES = [

@@ -26,6 +26,7 @@ export interface DashboardAlert {
   plant?: {
     id: string;
     name: string;
+    especie: string;
   };
 }
 

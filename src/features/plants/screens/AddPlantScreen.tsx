@@ -29,6 +29,7 @@ import {
   sunlightTranslations,
   substrateTranslations,
 } from "../utils/translatePlantValues";
+import RenderChip from "../../../components/RenderChip";
 
 export default function AddPlantScreen() {
   const navigation = useNavigation<any>();
@@ -70,26 +71,6 @@ export default function AddPlantScreen() {
   const handleImagePick = () => {
     console.log("Abrir galeria ou câmera para foto da planta");
   };
-
-  const renderChip = (
-    label: string,
-    isSelected: boolean,
-    onPress: () => void,
-  ) => (
-    <TouchableOpacity
-      style={[styles.chip, isSelected && styles.chipSelected]}
-      onPress={onPress}
-      activeOpacity={0.8}
-      disabled={saving}
-    >
-      <Typography
-        variant="caption"
-        color={isSelected ? colors.text.inverse : colors.text.primary}
-      >
-        {label}
-      </Typography>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.container}>
@@ -190,11 +171,15 @@ export default function AddPlantScreen() {
             showsHorizontalScrollIndicator={false}
             style={styles.chipScroll}
           >
-            {Object.values(PlantPhaseEnum).map((phase) =>
-              renderChip(phaseTranslations[phase], phaseOfLife === phase, () =>
-                setPhaseOfLife(phase),
-              ),
-            )}
+            {Object.values(PlantPhaseEnum).map((phase) => (
+              <RenderChip
+                key={phase}
+                label={phaseTranslations[phase]}
+                isSelected={phaseOfLife === phase}
+                onPress={() => setPhaseOfLife(phase)}
+                saving={saving}
+              />
+            ))}
           </ScrollView>
 
           <Typography
@@ -210,13 +195,15 @@ export default function AddPlantScreen() {
             showsHorizontalScrollIndicator={false}
             style={styles.chipScroll}
           >
-            {Object.values(EnvironmentTypeEnum).map((env) =>
-              renderChip(
-                environmentTranslations[env],
-                environmentType === env,
-                () => setEnvironmentType(env),
-              ),
-            )}
+            {Object.values(EnvironmentTypeEnum).map((env) => (
+              <RenderChip
+                key={env}
+                label={environmentTranslations[env]}
+                isSelected={environmentType === env}
+                onPress={() => setEnvironmentType(env)}
+                saving={saving}
+              />
+            ))}
           </ScrollView>
 
           <Typography
@@ -232,13 +219,15 @@ export default function AddPlantScreen() {
             showsHorizontalScrollIndicator={false}
             style={styles.chipScroll}
           >
-            {Object.values(SunlightExposureEnum).map((sun) =>
-              renderChip(
-                sunlightTranslations[sun],
-                sunlightExposure === sun,
-                () => setSunlightExposure(sun),
-              ),
-            )}
+            {Object.values(SunlightExposureEnum).map((sun) => (
+              <RenderChip
+                key={sun}
+                label={sunlightTranslations[sun]}
+                isSelected={sunlightExposure === sun}
+                onPress={() => setSunlightExposure(sun)}
+                saving={saving}
+              />
+            ))}
           </ScrollView>
 
           <Typography
@@ -254,13 +243,15 @@ export default function AddPlantScreen() {
             showsHorizontalScrollIndicator={false}
             style={styles.chipScroll}
           >
-            {Object.values(SubstrateTypeEnum).map((sub) =>
-              renderChip(
-                substrateTranslations[sub],
-                substrateType === sub,
-                () => setSubstrateType(sub),
-              ),
-            )}
+            {Object.values(SubstrateTypeEnum).map((sub) => (
+              <RenderChip
+                key={sub}
+                label={substrateTranslations[sub]}
+                isSelected={substrateType === sub}
+                onPress={() => setSubstrateType(sub)}
+                saving={saving}
+              />
+            ))}
           </ScrollView>
         </View>
       </ScrollView>
@@ -314,19 +305,6 @@ const styles = StyleSheet.create({
   formSection: { gap: 8 },
   sectionLabel: { marginTop: 16, marginBottom: 8 },
   chipScroll: { flexDirection: "row", marginBottom: 8 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceHighlight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: 8,
-  },
-  chipSelected: {
-    backgroundColor: colors.primary.main,
-    borderColor: colors.primary.main,
-  },
   footer: {
     paddingVertical: 12,
     borderTopWidth: 1,
