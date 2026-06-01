@@ -4,6 +4,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Switch,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
@@ -14,6 +15,13 @@ import {
   ChevronRight,
   ShieldCheck,
   Save,
+  Bell,
+  AlertTriangle,
+  Info,
+  Leaf,
+  Sun,
+  Moon,
+  MonitorSmartphone,
 } from "lucide-react-native";
 
 import {
@@ -41,6 +49,10 @@ export default function ProfileScreen() {
     fieldErrors,
     performUpdateProfile,
     logout,
+    settings,
+    toggleNotifications,
+    toggleUrgentAlertsOnly,
+    changeTheme,
   } = useProfileViewModel();
 
   const handleUpdate = async () => {
@@ -67,7 +79,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {error ? (
         <AlertMessage
           title="Atenção"
@@ -132,7 +144,7 @@ export default function ProfileScreen() {
             DADOS PESSOAIS
           </Typography>
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <InputField
               label="Nome Completo"
               icon={User}
@@ -170,10 +182,182 @@ export default function ProfileScreen() {
             color={colors.text.muted}
             style={styles.sectionTitle}
           >
-            SEGURANÇA E CONTA
+            PERSONALIZAÇÃO
           </Typography>
 
           <View style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={[styles.iconBox, { backgroundColor: colors.primary.faded }]}>
+                <Bell size={20} color={colors.primary.main} />
+              </View>
+              <View style={styles.settingTexts}>
+                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                  Notificações
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  Receber alertas das suas plantas
+                </Typography>
+              </View>
+              <Switch
+                value={settings.notificationsEnabled}
+                onValueChange={toggleNotifications}
+                trackColor={{ false: colors.border, true: colors.primary.light }}
+                thumbColor={
+                  settings.notificationsEnabled
+                    ? colors.primary.main
+                    : colors.text.muted
+                }
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+              <View style={[styles.iconBox, { backgroundColor: colors.warning.faded }]}>
+                <AlertTriangle size={20} color={colors.warning.main} />
+              </View>
+              <View style={styles.settingTexts}>
+                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                  Somente Urgentes
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  Notificar apenas alertas críticos
+                </Typography>
+              </View>
+              <Switch
+                value={settings.urgentAlertsOnly}
+                onValueChange={toggleUrgentAlertsOnly}
+                disabled={!settings.notificationsEnabled}
+                trackColor={{ false: colors.border, true: colors.warning.faded }}
+                thumbColor={
+                  settings.urgentAlertsOnly
+                    ? colors.warning.main
+                    : colors.text.muted
+                }
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+              <View style={[styles.iconBox, { backgroundColor: colors.info.faded }]}>
+                <Moon size={20} color={colors.info.main} />
+              </View>
+              <View style={styles.settingTexts}>
+                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                  Tema do Aplicativo
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  Escolha o modo de cores
+                </Typography>
+              </View>
+            </View>
+
+            <View style={[styles.themeSelector, { backgroundColor: colors.surfaceHighlight }]}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => changeTheme("light")}
+                style={[
+                  styles.themeOption,
+                  settings.themePreference === "light" && [styles.themeOptionActive, { backgroundColor: colors.surface }],
+                ]}
+              >
+                <Sun
+                  size={18}
+                  color={
+                    settings.themePreference === "light"
+                      ? colors.primary.main
+                      : colors.text.muted
+                  }
+                />
+                <Typography
+                  variant="caption"
+                  weight={settings.themePreference === "light" ? "bold" : "medium"}
+                  color={
+                    settings.themePreference === "light"
+                      ? colors.primary.main
+                      : colors.text.muted
+                  }
+                  style={{ marginLeft: 6 }}
+                >
+                  Claro
+                </Typography>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => changeTheme("dark")}
+                style={[
+                  styles.themeOption,
+                  settings.themePreference === "dark" && [styles.themeOptionActive, { backgroundColor: colors.surface }],
+                ]}
+              >
+                <Moon
+                  size={18}
+                  color={
+                    settings.themePreference === "dark"
+                      ? colors.primary.main
+                      : colors.text.muted
+                  }
+                />
+                <Typography
+                  variant="caption"
+                  weight={settings.themePreference === "dark" ? "bold" : "medium"}
+                  color={
+                    settings.themePreference === "dark"
+                      ? colors.primary.main
+                      : colors.text.muted
+                  }
+                  style={{ marginLeft: 6 }}
+                >
+                  Escuro
+                </Typography>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => changeTheme("auto")}
+                style={[
+                  styles.themeOption,
+                  settings.themePreference === "auto" && [styles.themeOptionActive, { backgroundColor: colors.surface }],
+                ]}
+              >
+                <MonitorSmartphone
+                  size={18}
+                  color={
+                    settings.themePreference === "auto"
+                      ? colors.primary.main
+                      : colors.text.muted
+                  }
+                />
+                <Typography
+                  variant="caption"
+                  weight={settings.themePreference === "auto" ? "bold" : "medium"}
+                  color={
+                    settings.themePreference === "auto"
+                      ? colors.primary.main
+                      : colors.text.muted
+                  }
+                  style={{ marginLeft: 6 }}
+                >
+                  Auto
+                </Typography>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Typography
+            variant="caption"
+            weight="bold"
+            color={colors.text.muted}
+            style={styles.sectionTitle}
+          >
+            SEGURANÇA E CONTA
+          </Typography>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.6}
@@ -220,6 +404,49 @@ export default function ProfileScreen() {
                 Encerrar Sessão
               </Typography>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Typography
+            variant="caption"
+            weight="bold"
+            color={colors.text.muted}
+            style={styles.sectionTitle}
+          >
+            SOBRE O APP
+          </Typography>
+
+          <View style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={[styles.iconBox, { backgroundColor: colors.success.light }]}>
+                <Leaf size={20} color={colors.success.main} />
+              </View>
+              <View style={styles.settingTexts}>
+                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                  FloraSense
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  Versão {settings.appVersion}
+                </Typography>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+              <View style={[styles.iconBox, { backgroundColor: colors.surfaceHighlight }]}>
+                <Info size={20} color={colors.text.secondary} />
+              </View>
+              <View style={styles.settingTexts}>
+                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                  Sobre
+                </Typography>
+                <Typography variant="caption" color={colors.text.secondary}>
+                  Monitoramento inteligente de plantas via IoT e IA
+                </Typography>
+              </View>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -298,10 +525,49 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   menuText: { flex: 1, fontSize: 15 },
+  settingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  settingTexts: {
+    flex: 1,
+  },
   divider: {
     height: 1,
     backgroundColor: colors.surfaceHighlight,
     marginVertical: 12,
     marginLeft: 54,
+  },
+  themeSelector: {
+    flexDirection: "row",
+    marginTop: 16,
+    backgroundColor: colors.surfaceHighlight,
+    borderRadius: 12,
+    padding: 4,
+  },
+  themeOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  themeOptionActive: {
+    backgroundColor: colors.surface,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });

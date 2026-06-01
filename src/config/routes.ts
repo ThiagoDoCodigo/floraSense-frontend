@@ -20,7 +20,6 @@ import ChatScreen from "../features/chat/screens/ChatScreen";
 import HomeScreen from "../features/home/screens/HomeScreen";
 import ProfileScreen from "../features/profile/screens/ProfileScreen";
 import ChangePasswordScreen from "../features/profile/screens/ChangePasswordScreen";
-import SettingsScreen from "../features/settings/screens/SettingsScreen";
 
 export const HOME_ROUTES = [
   {
@@ -139,23 +138,6 @@ export const PROFILE_ROUTES = [
   },
 ];
 
-export const SETTINGS_ROUTES = [
-  {
-    name: "SettingsMain",
-    title: "Configurações",
-    subtitle: "Preferências do aplicativo",
-    icon: Settings,
-    component: SettingsScreen,
-  },
-  {
-    name: "ChangePassword",
-    title: "Alterar Senha",
-    subtitle: "Segurança da conta",
-    icon: Lock,
-    component: ChangePasswordScreen,
-  },
-];
-
 export const TAB_ROUTES = [
   {
     name: "HomeTab",
@@ -184,12 +166,5 @@ export const TAB_ROUTES = [
     icon: User,
     isStack: true,
     nestedRoutes: PROFILE_ROUTES,
-  },
-  {
-    name: "SettingsTab",
-    label: "Config.",
-    icon: Settings,
-    isStack: true,
-    nestedRoutes: SETTINGS_ROUTES,
   },
 ];
