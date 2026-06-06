@@ -20,7 +20,12 @@ import {
   X,
 } from "lucide-react-native";
 
-import { Typography, colors, AlertMessage } from "react-native-th-components";
+import {
+  Typography,
+  colors,
+  AlertMessage,
+  ConfirmationModal,
+} from "react-native-th-components";
 import { useDashboardViewModel } from "../viewModels/home.viewModel";
 import type { DashboardAlert } from "../models/home.model";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
@@ -49,6 +54,12 @@ export default function HomeScreen() {
     loadMoreAlerts,
     handleMarkAsRead,
     loadDashboardData,
+    rationaleModalVisible,
+    blockedModalVisible,
+    handleRationaleConfirm,
+    handleRationaleCancel,
+    handleBlockedConfirm,
+    handleBlockedCancel,
   } = useDashboardViewModel();
 
   if ((loading || refreshing) && !summary) {
@@ -338,6 +349,24 @@ export default function HomeScreen() {
           />
         </SafeAreaView>
       </Modal>
+
+      <ConfirmationModal
+        isOpen={rationaleModalVisible}
+        onClose={handleRationaleCancel}
+        onConfirm={handleRationaleConfirm}
+        title="Receber Notificações"
+        message="Para proteger suas plantas, o FloraSense precisa te enviar notificações quando a IA identificar riscos urgentes (como falta de água ou superaquecimento). Autoriza o envio?"
+      />
+
+      <ConfirmationModal
+        isOpen={blockedModalVisible}
+        onClose={handleBlockedCancel}
+        onConfirm={handleBlockedConfirm}
+        title="Avisos Bloqueados"
+        message="As notificações estão bloqueadas no seu sistema. Se quiser ser avisado sobre a saúde das plantas, clique abaixo para abrir as Configurações do App e habilite as notificações manualmente."
+        confirmText="Configurações"
+        isDestructive={true}
+      />
     </View>
   );
 }

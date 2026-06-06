@@ -6,6 +6,20 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { configureTheme } from "react-native-th-components";
 import { AuthProvider } from "./src/contexts/AuthContext";
+import * as Notifications from "expo-notifications";
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from "react-native-reanimated";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 configureTheme({
   themeName: "default",
@@ -21,10 +35,6 @@ configureTheme({
 });
 */
 
-import {
-  configureReanimatedLogger,
-  ReanimatedLogLevel,
-} from "react-native-reanimated";
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
