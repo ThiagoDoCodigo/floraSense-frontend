@@ -5,6 +5,7 @@ import authService from "../services/auth.service";
 interface AuthFormErrors {
   email?: string;
   password?: string;
+  confirmPassword?: string;
   name?: string;
 }
 
@@ -14,6 +15,7 @@ export const useAuthViewModel = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [globalError, setGlobalError] = useState("");
@@ -60,10 +62,18 @@ export const useAuthViewModel = () => {
 
     if (!name.trim() || name.length < 3)
       errors.name = "Insira seu nome completo.";
+
     if (!email.trim()) errors.email = "O e-mail é obrigatório.";
     else if (!isValidEmail(email)) errors.email = "Formato inválido.";
+
     if (!password || password.length < 6)
       errors.password = "Mínimo de 6 caracteres.";
+
+    if (!confirmPassword) {
+      errors.confirmPassword = "Confirme sua senha.";
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = "As senhas não coincidem.";
+    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -109,6 +119,8 @@ export const useAuthViewModel = () => {
     setEmail,
     password,
     setPassword,
+    confirmPassword,
+    setConfirmPassword,
     isProcessing,
     globalError,
     globalSuccess,

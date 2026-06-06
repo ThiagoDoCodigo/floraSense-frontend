@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -6,7 +7,7 @@ import {
   Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Leaf, Camera, Info, Plus } from "lucide-react-native";
+import { Leaf, Camera, Info, Tag, Plus } from "lucide-react-native";
 
 import {
   InputField,
@@ -14,6 +15,7 @@ import {
   Typography,
   colors,
   AlertMessage,
+  ConfirmationModal,
 } from "react-native-th-components";
 import { useAddPlantViewModel } from "../viewModels/plants.viewModel";
 import {
@@ -29,9 +31,12 @@ import {
   sunlightTranslations,
   substrateTranslations,
 } from "../utils/translatePlantValues";
+import RenderChip from "../../../components/RenderChip";
 
 export default function AddPlantScreen() {
   const navigation = useNavigation<any>();
+  const [imageError, setImageError] = useState(false);
+
   const {
     clearMessages,
     saving,
@@ -40,7 +45,7 @@ export default function AddPlantScreen() {
     fieldErrors,
     name,
     especie,
-    imageUrl,
+    localImageUri,
     phaseOfLife,
     environmentType,
     sunlightExposure,
@@ -52,6 +57,13 @@ export default function AddPlantScreen() {
     setEnvironmentType,
     setSunlightExposure,
     setSubstrateType,
+    handleImagePick,
+    imageRationaleVisible,
+    imageBlockedVisible,
+    handleRationaleConfirm,
+    handleRationaleCancel,
+    handleBlockedConfirm,
+    handleBlockedCancel,
   } = useAddPlantViewModel();
 
   const handleSave = async () => {
@@ -67,29 +79,7 @@ export default function AddPlantScreen() {
     }
   };
 
-  const handleImagePick = () => {
-    console.log("Abrir galeria ou câmera para foto da planta");
-  };
-
-  const renderChip = (
-    label: string,
-    isSelected: boolean,
-    onPress: () => void,
-  ) => (
-    <TouchableOpacity
-      style={[styles.chip, isSelected && styles.chipSelected]}
-      onPress={onPress}
-      activeOpacity={0.8}
-      disabled={saving}
-    >
-      <Typography
-        variant="caption"
-        color={isSelected ? colors.text.inverse : colors.text.primary}
-      >
-        {label}
-      </Typography>
-    </TouchableOpacity>
-  );
+  const imageToDisplay = localImageUri;
 
   return (
     <View style={styles.container}>
@@ -114,154 +104,184 @@ export default function AddPlantScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.infoBox}>
-          <Info size={20} color={colors.info.main} />
-          <Typography
-            variant="caption"
-            color={colors.text.secondary}
-            style={styles.infoText}
-          >
-            A Inteligência Artificial do FloraSense usará essas informações para
-            calibrar a leitura ideal dos sensores.
-          </Typography>
-        </View>
-
         <View style={styles.photoSection}>
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.text.primary}
-            style={styles.photoLabel}
-          >
-            Foto da Planta (Recomendado)
-          </Typography>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleImagePick}
-            style={styles.photoBox}
+            style={styles.imageWrapper}
           >
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.previewImage} />
+            {imageToDisplay && !imageError ? (
+              <Image
+                source={{ uri: imageToDisplay }}
+                style={styles.plantImage}
+                onError={() => setImageError(true)}
+              />
             ) : (
-              <View style={styles.placeholderBox}>
-                <Camera size={32} color={colors.primary.main} />
-                <Typography
-                  variant="caption"
-                  color={colors.primary.main}
-                  style={{ marginTop: 8 }}
-                >
-                  Tirar ou escolher foto
-                </Typography>
+              <View style={styles.placeholderImage}>
+                <Leaf size={40} color={colors.primary.main} />
               </View>
             )}
+
+            <View style={styles.editBadge}>
+              <Camera size={18} color={colors.text.inverse} />
+            </View>
           </TouchableOpacity>
+          <Typography
+            variant="caption"
+            weight="bold"
+            color={colors.primary.main}
+            style={{ marginTop: 16 }}
+          >
+            ADICIONAR FOTO
+          </Typography>
+        </View>
+
+        <View style={styles.infoBanner}>
+          <Info size={20} color={colors.info.main} style={{ marginTop: 2 }} />
+          <View style={styles.infoTextContainer}>
+            <Typography
+              variant="caption"
+              weight="bold"
+              color={colors.info.main}
+            >
+              Impacto no Diagnóstico
+            </Typography>
+            <Typography
+              variant="caption"
+              color={colors.text.secondary}
+              style={{ marginTop: 2, lineHeight: 18 }}
+            >
+              A Inteligência Artificial do FloraSense usará essas informações
+              para calibrar a leitura ideal dos sensores.
+            </Typography>
+          </View>
         </View>
 
         <View style={styles.formSection}>
-          <InputField
-            label="Apelido da Planta *"
-            icon={Leaf}
-            placeholder="Ex: Samambaia da Sala"
-            value={name}
-            onChangeText={setName}
-            error={fieldErrors.name}
-            editable={!saving}
-          />
-          <InputField
-            label="Espécie Predominante *"
-            icon={Leaf}
-            placeholder="Ex: Samambaia, Cacto, Jiboia..."
-            value={especie}
-            onChangeText={setEspecie}
-            error={fieldErrors.especie}
-            editable={!saving}
-          />
-
           <Typography
-            variant="body"
-            weight="bold"
+            variant="title"
             color={colors.text.primary}
-            style={styles.sectionLabel}
+            style={{ marginBottom: 16, marginLeft: 4 }}
           >
-            Fase de Vida
+            Dados Básicos
           </Typography>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}
-          >
-            {Object.values(PlantPhaseEnum).map((phase) =>
-              renderChip(phaseTranslations[phase], phaseOfLife === phase, () =>
-                setPhaseOfLife(phase),
-              ),
-            )}
-          </ScrollView>
 
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.text.primary}
-            style={styles.sectionLabel}
-          >
-            Ambiente
-          </Typography>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}
-          >
-            {Object.values(EnvironmentTypeEnum).map((env) =>
-              renderChip(
-                environmentTranslations[env],
-                environmentType === env,
-                () => setEnvironmentType(env),
-              ),
-            )}
-          </ScrollView>
+          <View style={styles.formCard}>
+            <InputField
+              label="Apelido da Planta *"
+              icon={Tag}
+              placeholder="Ex: Samambaia da Sala"
+              value={name}
+              onChangeText={setName}
+              error={fieldErrors.name}
+              editable={!saving}
+            />
+            <InputField
+              label="Espécie Predominante *"
+              icon={Leaf}
+              placeholder="Ex: Samambaia, Cacto, Jiboia..."
+              value={especie}
+              onChangeText={setEspecie}
+              error={fieldErrors.especie}
+              editable={!saving}
+            />
 
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.text.primary}
-            style={styles.sectionLabel}
-          >
-            Exposição Solar
-          </Typography>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}
-          >
-            {Object.values(SunlightExposureEnum).map((sun) =>
-              renderChip(
-                sunlightTranslations[sun],
-                sunlightExposure === sun,
-                () => setSunlightExposure(sun),
-              ),
-            )}
-          </ScrollView>
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.text.primary}
+              style={styles.sectionLabel}
+            >
+              Fase de Vida
+            </Typography>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipScroll}
+            >
+              {Object.values(PlantPhaseEnum).map((phase) => (
+                <RenderChip
+                  key={phase}
+                  label={phaseTranslations[phase]}
+                  isSelected={phaseOfLife === phase}
+                  onPress={() => setPhaseOfLife(phase)}
+                  saving={saving}
+                />
+              ))}
+            </ScrollView>
 
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.text.primary}
-            style={styles.sectionLabel}
-          >
-            Tipo de Substrato
-          </Typography>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}
-          >
-            {Object.values(SubstrateTypeEnum).map((sub) =>
-              renderChip(
-                substrateTranslations[sub],
-                substrateType === sub,
-                () => setSubstrateType(sub),
-              ),
-            )}
-          </ScrollView>
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.text.primary}
+              style={styles.sectionLabel}
+            >
+              Ambiente
+            </Typography>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipScroll}
+            >
+              {Object.values(EnvironmentTypeEnum).map((env) => (
+                <RenderChip
+                  key={env}
+                  label={environmentTranslations[env]}
+                  isSelected={environmentType === env}
+                  onPress={() => setEnvironmentType(env)}
+                  saving={saving}
+                />
+              ))}
+            </ScrollView>
+
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.text.primary}
+              style={styles.sectionLabel}
+            >
+              Exposição Solar
+            </Typography>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipScroll}
+            >
+              {Object.values(SunlightExposureEnum).map((sun) => (
+                <RenderChip
+                  key={sun}
+                  label={sunlightTranslations[sun]}
+                  isSelected={sunlightExposure === sun}
+                  onPress={() => setSunlightExposure(sun)}
+                  saving={saving}
+                />
+              ))}
+            </ScrollView>
+
+            <Typography
+              variant="body"
+              weight="bold"
+              color={colors.text.primary}
+              style={styles.sectionLabel}
+            >
+              Tipo de Substrato
+            </Typography>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipScroll}
+            >
+              {Object.values(SubstrateTypeEnum).map((sub) => (
+                <RenderChip
+                  key={sub}
+                  label={substrateTranslations[sub]}
+                  isSelected={substrateType === sub}
+                  onPress={() => setSubstrateType(sub)}
+                  saving={saving}
+                />
+              ))}
+            </ScrollView>
+          </View>
         </View>
       </ScrollView>
 
@@ -275,58 +295,100 @@ export default function AddPlantScreen() {
           errorLabel="Erro ao cadastrar planta, tente novamente."
         />
       </View>
+
+      <ConfirmationModal
+        isOpen={imageRationaleVisible}
+        onClose={handleRationaleCancel}
+        onConfirm={handleRationaleConfirm}
+        title="Acesso à Galeria"
+        message="Para personalizar sua planta, o FloraSense precisa de acesso à sua galeria de fotos. Você autoriza?"
+      />
+
+      <ConfirmationModal
+        isOpen={imageBlockedVisible}
+        onClose={handleBlockedCancel}
+        onConfirm={handleBlockedConfirm}
+        title="Acesso Bloqueado"
+        message="O acesso às fotos foi bloqueado. Para escolher uma imagem, abra as Configurações do seu aparelho e conceda a permissão."
+        confirmText="Configurações"
+        isDestructive={true}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { paddingBottom: 32, paddingTop: 16 },
-  infoBox: {
+  scrollContent: { paddingVertical: 16, paddingBottom: 32 },
+  photoSection: { alignItems: "center", marginTop: 16, marginBottom: 32 },
+  imageWrapper: {
+    position: "relative",
+    width: 140,
+    height: 140,
+    borderRadius: 32,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  plantImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 32,
+    resizeMode: "cover",
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  placeholderImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 32,
+    backgroundColor: colors.primary.faded,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.primary.light,
+  },
+  editBadge: {
+    position: "absolute",
+    bottom: -4,
+    right: -4,
+    backgroundColor: colors.primary.main,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: colors.background,
+    elevation: 2,
+  },
+  infoBanner: {
     flexDirection: "row",
     backgroundColor: colors.info.light,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.info.main,
     marginBottom: 24,
-    alignItems: "center",
   },
-  infoText: { flex: 1, marginLeft: 12, lineHeight: 18 },
-  photoSection: { marginBottom: 24 },
-  photoLabel: { marginBottom: 12 },
-  photoBox: {
-    height: 160,
+  infoTextContainer: { flex: 1, marginLeft: 12 },
+  formSection: { marginBottom: 32 },
+  formCard: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: "dashed",
-    overflow: "hidden",
-  },
-  placeholderBox: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.primary.faded,
-  },
-  previewImage: { width: "100%", height: "100%", resizeMode: "cover" },
-  formSection: { gap: 8 },
-  sectionLabel: { marginTop: 16, marginBottom: 8 },
-  chipScroll: { flexDirection: "row", marginBottom: 8 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    padding: 16,
     borderRadius: 20,
-    backgroundColor: colors.surfaceHighlight,
     borderWidth: 1,
     borderColor: colors.border,
-    marginRight: 8,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
-  chipSelected: {
-    backgroundColor: colors.primary.main,
-    borderColor: colors.primary.main,
-  },
+  sectionLabel: { marginTop: 16, marginBottom: 8 },
+  chipScroll: { flexDirection: "row", marginBottom: 8 },
   footer: {
     paddingVertical: 12,
     borderTopWidth: 1,

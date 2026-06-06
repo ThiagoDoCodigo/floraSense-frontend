@@ -18,6 +18,13 @@ class AuthService {
       data,
     );
 
+    const currentNotifyPref = await AsyncStorage.getItem(
+      "receiptNotifications",
+    );
+    if (!currentNotifyPref) {
+      await AsyncStorage.setItem("receiptNotifications", "true");
+    }
+
     await AsyncStorage.multiSet([
       [STORAGE_KEYS.ACCESS_TOKEN, response.data.tokens.accessToken],
       [STORAGE_KEYS.REFRESH_TOKEN, response.data.tokens.refreshToken],

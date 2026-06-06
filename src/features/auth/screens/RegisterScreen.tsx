@@ -22,6 +22,8 @@ export default function RegisterScreen() {
     setEmail,
     password,
     setPassword,
+    confirmPassword,
+    setConfirmPassword,
     globalError,
     fieldErrors,
     clearMessages,
@@ -30,7 +32,11 @@ export default function RegisterScreen() {
   } = useAuthViewModel();
 
   const handleRegister = async () => {
-    await performRegister();
+    try {
+      await performRegister();
+    } catch (err) {
+      throw err;
+    }
   };
 
   return (
@@ -93,7 +99,10 @@ export default function RegisterScreen() {
           label="Confirmar Senha *"
           icon={Lock}
           placeholder="Repita sua senha"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
           secureTextEntry
+          error={fieldErrors.confirmPassword}
           editable={!isProcessing}
         />
       </ScrollView>

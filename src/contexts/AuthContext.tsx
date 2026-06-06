@@ -12,6 +12,10 @@ import type {
   PublicCreateUserDTO,
 } from "../features/auth/models/auth.model";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "../services/floraSenseApi";
+import socketService from "../services/socket.service";
+
 interface AuthContextData {
   user: AuthUserResponseDTO | null;
   isLoading: boolean;
@@ -32,8 +36,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     async function loadStorageData() {
       const storedUser = await authService.getStoredUser();
-      if (storedUser) {
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+
+      if (storedUser && token) {
         setUser(storedUser);
+        socketService.connect(token);
       }
       setIsLoading(false);
     }
@@ -43,16 +50,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   async function signIn(data: LoginRequestDTO) {
     const loggedUser = await authService.login(data);
     setUser(loggedUser);
+
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    if (token) socketService.connect(token);
   }
 
   async function signUp(data: PublicCreateUserDTO) {
     const newUser = await authService.register(data);
     setUser(newUser);
+
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    if (token) socketService.connect(token);
   }
 
   async function signOut() {
     await authService.logout();
     setUser(null);
+    socketService.disconnect();
   }
 
   async function updateUserProfile(updatedData: Partial<AuthUserResponseDTO>) {

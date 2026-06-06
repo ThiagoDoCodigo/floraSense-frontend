@@ -1,9 +1,12 @@
+import { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   Image,
+  InteractionManager,
+  Platform,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Leaf, Camera, Info, Tag, Save } from "lucide-react-native";
@@ -14,6 +17,7 @@ import {
   Typography,
   colors,
   AlertMessage,
+  ConfirmationModal,
 } from "react-native-th-components";
 import { useEditPlantViewModel } from "../viewModels/plants.viewModel";
 import {
@@ -32,11 +36,15 @@ import {
 
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
+import RenderChip from "../../../components/RenderChip";
 
 export default function EditPlantScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { plant } = route.params;
+
+  const [isReady, setIsReady] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const {
     name,
@@ -44,6 +52,7 @@ export default function EditPlantScreen() {
     especie,
     setEspecie,
     imageUrl,
+    localImageUri,
     phaseOfLife,
     setPhaseOfLife,
     environmentType,
@@ -58,7 +67,36 @@ export default function EditPlantScreen() {
     saveChanges,
     clearMessages,
     fieldErrors,
+    handleImagePick,
+    imageRationaleVisible,
+    imageBlockedVisible,
+    handleRationaleConfirm,
+    handleRationaleCancel,
+    handleBlockedConfirm,
+    handleBlockedCancel,
   } = useEditPlantViewModel(plant);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      setIsReady(true);
+      return;
+    }
+
+    const task = InteractionManager.runAfterInteractions(() => {
+      setIsReady(true);
+    });
+    return () => task.cancel();
+  }, []);
+
+  if (!isReady) {
+    return (
+      <LoadingIndicator
+        message="Preparando edição..."
+        subMessage="Aguarde um momento"
+        fullScreen={true}
+      />
+    );
+  }
 
   if (!plant && !name) {
     return (
@@ -90,29 +128,7 @@ export default function EditPlantScreen() {
     }
   };
 
-  const handleImagePick = () => {
-    console.log("Abrir galeria para trocar a foto da planta");
-  };
-
-  const renderChip = (
-    label: string,
-    isSelected: boolean,
-    onPress: () => void,
-  ) => (
-    <TouchableOpacity
-      style={[styles.chip, isSelected && styles.chipSelected]}
-      onPress={onPress}
-      activeOpacity={0.8}
-      disabled={saving}
-    >
-      <Typography
-        variant="caption"
-        color={isSelected ? colors.text.inverse : colors.text.primary}
-      >
-        {label}
-      </Typography>
-    </TouchableOpacity>
-  );
+  const imageToDisplay = localImageUri || imageUrl;
 
   return (
     <View style={styles.container}>
@@ -143,8 +159,12 @@ export default function EditPlantScreen() {
             onPress={handleImagePick}
             style={styles.imageWrapper}
           >
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.plantImage} />
+            {imageToDisplay && !imageError ? (
+              <Image
+                source={{ uri: imageToDisplay }}
+                style={styles.plantImage}
+                onError={() => setImageError(true)}
+              />
             ) : (
               <View style={styles.placeholderImage}>
                 <Leaf size={40} color={colors.primary.main} />
@@ -228,13 +248,15 @@ export default function EditPlantScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipScroll}
             >
-              {Object.values(PlantPhaseEnum).map((phase) =>
-                renderChip(
-                  phaseTranslations[phase as PlantPhaseEnum],
-                  phaseOfLife === phase,
-                  () => setPhaseOfLife(phase as PlantPhaseEnum),
-                ),
-              )}
+              {Object.values(PlantPhaseEnum).map((phase) => (
+                <RenderChip
+                  key={phase}
+                  label={phaseTranslations[phase as PlantPhaseEnum]}
+                  isSelected={phaseOfLife === phase}
+                  onPress={() => setPhaseOfLife(phase as PlantPhaseEnum)}
+                  saving={saving}
+                />
+              ))}
             </ScrollView>
 
             <Typography
@@ -250,13 +272,15 @@ export default function EditPlantScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipScroll}
             >
-              {Object.values(EnvironmentTypeEnum).map((env) =>
-                renderChip(
-                  environmentTranslations[env as EnvironmentTypeEnum],
-                  environmentType === env,
-                  () => setEnvironmentType(env as EnvironmentTypeEnum),
-                ),
-              )}
+              {Object.values(EnvironmentTypeEnum).map((env) => (
+                <RenderChip
+                  key={env}
+                  label={environmentTranslations[env as EnvironmentTypeEnum]}
+                  isSelected={environmentType === env}
+                  onPress={() => setEnvironmentType(env as EnvironmentTypeEnum)}
+                  saving={saving}
+                />
+              ))}
             </ScrollView>
 
             <Typography
@@ -272,13 +296,17 @@ export default function EditPlantScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipScroll}
             >
-              {Object.values(SunlightExposureEnum).map((sun) =>
-                renderChip(
-                  sunlightTranslations[sun as SunlightExposureEnum],
-                  sunlightExposure === sun,
-                  () => setSunlightExposure(sun as SunlightExposureEnum),
-                ),
-              )}
+              {Object.values(SunlightExposureEnum).map((sun) => (
+                <RenderChip
+                  key={sun}
+                  label={sunlightTranslations[sun as SunlightExposureEnum]}
+                  isSelected={sunlightExposure === sun}
+                  onPress={() =>
+                    setSunlightExposure(sun as SunlightExposureEnum)
+                  }
+                  saving={saving}
+                />
+              ))}
             </ScrollView>
 
             <Typography
@@ -294,13 +322,15 @@ export default function EditPlantScreen() {
               showsHorizontalScrollIndicator={false}
               style={styles.chipScroll}
             >
-              {Object.values(SubstrateTypeEnum).map((sub) =>
-                renderChip(
-                  substrateTranslations[sub as SubstrateTypeEnum],
-                  substrateType === sub,
-                  () => setSubstrateType(sub as SubstrateTypeEnum),
-                ),
-              )}
+              {Object.values(SubstrateTypeEnum).map((sub) => (
+                <RenderChip
+                  key={sub}
+                  label={substrateTranslations[sub as SubstrateTypeEnum]}
+                  isSelected={substrateType === sub}
+                  onPress={() => setSubstrateType(sub as SubstrateTypeEnum)}
+                  saving={saving}
+                />
+              ))}
             </ScrollView>
           </View>
         </View>
@@ -317,6 +347,24 @@ export default function EditPlantScreen() {
           errorLabel="Erro ao atualizar os dados da planta."
         />
       </View>
+
+      <ConfirmationModal
+        isOpen={imageRationaleVisible}
+        onClose={handleRationaleCancel}
+        onConfirm={handleRationaleConfirm}
+        title="Acesso à Galeria"
+        message="Para personalizar sua planta, o FloraSense precisa de acesso à sua galeria de fotos. Você autoriza?"
+      />
+
+      <ConfirmationModal
+        isOpen={imageBlockedVisible}
+        onClose={handleBlockedCancel}
+        onConfirm={handleBlockedConfirm}
+        title="Acesso Bloqueado"
+        message="O acesso às fotos foi bloqueado. Para escolher uma imagem, abra as Configurações do seu aparelho e conceda a permissão."
+        confirmText="Configurações"
+        isDestructive={true}
+      />
     </View>
   );
 }
@@ -393,19 +441,6 @@ const styles = StyleSheet.create({
   },
   sectionLabel: { marginTop: 16, marginBottom: 8 },
   chipScroll: { flexDirection: "row", marginBottom: 8 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceHighlight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: 8,
-  },
-  chipSelected: {
-    backgroundColor: colors.primary.main,
-    borderColor: colors.primary.main,
-  },
   footer: {
     paddingVertical: 12,
     borderTopWidth: 1,

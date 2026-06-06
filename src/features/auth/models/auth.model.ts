@@ -15,7 +15,7 @@ export type LoginRequestDTO = {
 };
 
 export interface AuthUserResponseDTO {
-  id_user: string;
+  id: string;
   name: string;
   email: string;
   role: string;

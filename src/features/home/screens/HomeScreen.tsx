@@ -20,7 +20,12 @@ import {
   X,
 } from "lucide-react-native";
 
-import { Typography, colors, AlertMessage } from "react-native-th-components";
+import {
+  Typography,
+  colors,
+  AlertMessage,
+  ConfirmationModal,
+} from "react-native-th-components";
 import { useDashboardViewModel } from "../viewModels/home.viewModel";
 import type { DashboardAlert } from "../models/home.model";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
@@ -28,6 +33,7 @@ import { MetricCard } from "../../../components/MetricCard";
 import { AlertCard } from "../../../components/AlertCard";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
 import { EmptyState } from "../../../components/EmptyState";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -48,6 +54,12 @@ export default function HomeScreen() {
     loadMoreAlerts,
     handleMarkAsRead,
     loadDashboardData,
+    rationaleModalVisible,
+    blockedModalVisible,
+    handleRationaleConfirm,
+    handleRationaleCancel,
+    handleBlockedConfirm,
+    handleBlockedCancel,
   } = useDashboardViewModel();
 
   if ((loading || refreshing) && !summary) {
@@ -155,7 +167,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.metricsRow}>
               <MetricCard
-                title="Umidade Média"
+                title="Umidade Média do Solo"
                 value={`${summary.averageSoilMoisture}%`}
                 icon={Droplets}
                 color={colors.info.main}
@@ -298,7 +310,7 @@ export default function HomeScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setIsModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Typography variant="title">Todos os Alertas</Typography>
             <TouchableOpacity
@@ -335,8 +347,26 @@ export default function HomeScreen() {
               ) : null
             }
           />
-        </View>
+        </SafeAreaView>
       </Modal>
+
+      <ConfirmationModal
+        isOpen={rationaleModalVisible}
+        onClose={handleRationaleCancel}
+        onConfirm={handleRationaleConfirm}
+        title="Receber Notificações"
+        message="Para proteger suas plantas, o FloraSense precisa te enviar notificações quando a IA identificar riscos urgentes (como falta de água ou superaquecimento). Autoriza o envio?"
+      />
+
+      <ConfirmationModal
+        isOpen={blockedModalVisible}
+        onClose={handleBlockedCancel}
+        onConfirm={handleBlockedConfirm}
+        title="Avisos Bloqueados"
+        message="As notificações estão bloqueadas no seu sistema. Se quiser ser avisado sobre a saúde das plantas, clique abaixo para abrir as Configurações do App e habilite as notificações manualmente."
+        confirmText="Configurações"
+        isDestructive={true}
+      />
     </View>
   );
 }

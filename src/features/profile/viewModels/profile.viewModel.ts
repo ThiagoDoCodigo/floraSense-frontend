@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { Appearance, ColorSchemeName } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import profileService from "../services/profile.service";
 import { useAuth } from "../../../contexts/AuthContext";
 
@@ -12,6 +14,35 @@ export const useProfileViewModel = () => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [urgentAlertsOnly, setUrgentAlertsOnly] = useState(false);
+  const appVersion = "1.0.0";
+
+  const toggleNotifications = () => {
+    setNotificationsEnabled((prev) => !prev);
+  };
+
+  const toggleUrgentAlertsOnly = () => {
+    setUrgentAlertsOnly((prev) => !prev);
+  };
+
+  const [themePreference, setThemePreference] = useState<"light" | "dark" | "auto">("auto");
+
+  useEffect(() => {
+    AsyncStorage.getItem("@theme_preference").then((savedTheme) => {
+      if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "auto") {
+        setThemePreference(savedTheme);
+        Appearance.setColorScheme(savedTheme === "auto" ? null : savedTheme);
+      }
+    });
+  }, []);
+
+  const changeTheme = async (pref: "light" | "dark" | "auto") => {
+    setThemePreference(pref);
+    Appearance.setColorScheme(pref === "auto" ? null : pref);
+    await AsyncStorage.setItem("@theme_preference", pref);
+  };
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -173,5 +204,14 @@ export const useProfileViewModel = () => {
     performUpdateProfile,
     performChangePassword,
     logout: signOut,
+    settings: {
+      notificationsEnabled,
+      urgentAlertsOnly,
+      appVersion,
+      themePreference,
+    },
+    toggleNotifications,
+    toggleUrgentAlertsOnly,
+    changeTheme,
   };
 };

@@ -4,6 +4,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import {
@@ -15,9 +16,8 @@ import {
   RefreshCw,
   SmartphoneNfc,
   Unplug,
-  Clock,
+  Settings,
 } from "lucide-react-native";
-
 import {
   InputField,
   ActionButton,
@@ -25,7 +25,9 @@ import {
   Button,
   colors,
   AlertMessage,
+  ConfirmationModal,
 } from "react-native-th-components";
+
 import { useBluetoothSetupViewModel } from "../viewModels/plants.viewModel";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
@@ -37,6 +39,7 @@ export default function BluetoothSetupScreen() {
 
   const {
     step,
+    setStep,
     plant,
     isScanning,
     devices,
@@ -50,34 +53,52 @@ export default function BluetoothSetupScreen() {
     disconnecting,
     error,
     success,
-    scanDevices,
     loadData,
+    scanDevices,
     connectToDevice,
     pairDevice,
     unpairDevice,
     clearMessages,
+    rationaleModalVisible,
+    blockedModalVisible,
+    rationaleMessage,
+    blockedMessage,
+    handleRationaleConfirm,
+    handleRationaleCancel,
+    handleBlockedConfirm,
+    handleBlockedCancel,
   } = useBluetoothSetupViewModel(plantId);
 
   const handlePair = async () => {
-    const ok = await pairDevice();
-    if (ok) {
-      setTimeout(() => {
-        if (navigation.canGoBack()) navigation.goBack();
-      }, 2000);
+    try {
+      const ok = await pairDevice();
+      if (ok)
+        setTimeout(() => {
+          if (navigation.canGoBack()) navigation.goBack();
+        }, 3000);
+    } catch (e) {
+      throw e;
     }
   };
 
   if (step === "loading") {
     return (
       <LoadingIndicator
-        message="Verificando Hardware..."
-        subMessage="Checando conexões do dispositivo"
+        message="Validando Hardware..."
+        subMessage="Checando conexão na nuvem"
         fullScreen={true}
       />
     );
   }
 
-  if (step === "error") {
+  if (
+    step === "error" ||
+    (error &&
+      !plant &&
+      step !== "connected" &&
+      step !== "wifi" &&
+      step !== "permission_blocked")
+  ) {
     return (
       <ErrorIndicator
         title="Falha na Conexão"
@@ -113,16 +134,11 @@ export default function BluetoothSetupScreen() {
           align="center"
           style={{ marginTop: 8 }}
         >
-          Seu módulo FloraSense está conectado e enviando telemetria para a
-          nuvem.
+          Módulo FloraSense pareado e comunicando via Wi-Fi.
         </Typography>
       </View>
 
       <View style={styles.detailsContainer}>
-        <Typography variant="title" style={{ marginBottom: 16 }}>
-          Detalhes da Conexão
-        </Typography>
-
         <View style={styles.detailRow}>
           <Typography
             variant="body"
@@ -136,7 +152,6 @@ export default function BluetoothSetupScreen() {
           </Typography>
         </View>
         <View style={styles.detailDivider} />
-
         <View style={styles.detailRow}>
           <Typography
             variant="body"
@@ -149,29 +164,6 @@ export default function BluetoothSetupScreen() {
             {plant?.firmwareVersion || "v1.0.0"}
           </Typography>
         </View>
-        <View style={styles.detailDivider} />
-
-        <View style={styles.detailRow}>
-          <Typography
-            variant="body"
-            weight="bold"
-            color={colors.text.secondary}
-          >
-            Conectado em
-          </Typography>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Clock
-              size={14}
-              color={colors.text.muted}
-              style={{ marginRight: 6 }}
-            />
-            <Typography variant="body" color={colors.text.primary}>
-              {plant?.lastConnectionDate
-                ? new Date(plant.lastConnectionDate).toLocaleDateString("pt-BR")
-                : "Recente"}
-            </Typography>
-          </View>
-        </View>
       </View>
 
       <View style={{ marginTop: 32 }}>
@@ -180,7 +172,7 @@ export default function BluetoothSetupScreen() {
           onPress={async () => {
             await unpairDevice();
           }}
-          loadingLabel="Desconectando módulo..."
+          loadingLabel="Enviando comando de reset..."
           successLabel="Desvinculado!"
           icon={Unplug}
           variant="outline"
@@ -191,7 +183,7 @@ export default function BluetoothSetupScreen() {
           color={colors.text.muted}
           style={{ marginTop: 12 }}
         >
-          Isso interromperá as leituras automatizadas desta planta.
+          Isso limpa a memória do ESP32 e interrompe as leituras automáticas.
         </Typography>
       </View>
     </View>
@@ -208,49 +200,34 @@ export default function BluetoothSetupScreen() {
           )}
         </View>
         <Typography variant="h2" style={{ marginTop: 16 }}>
-          {isScanning ? "Buscando módulos..." : "Dispositivos próximos"}
-        </Typography>
-        <Typography
-          variant="body"
-          color={colors.text.secondary}
-          align="center"
-          style={{ marginTop: 8 }}
-        >
-          Ligue seu ESP32 e aproxime o celular. Selecione o dispositivo
-          FloraSense na lista abaixo.
+          {isScanning ? "Buscando FloraSense..." : "Módulos Próximos"}
         </Typography>
       </View>
 
       <View style={styles.deviceList}>
         {devices.map((device) => {
           const isThisConnecting = isConnecting === device.id;
-          const isFlora = device.name.includes("FloraSense");
-
           return (
             <TouchableOpacity
               key={device.id}
               activeOpacity={0.7}
               disabled={isConnecting !== null}
               onPress={() => connectToDevice(device)}
-              style={[styles.deviceCard, isFlora && styles.deviceCardHighlight]}
+              style={styles.deviceCardHighlight}
             >
               <View
                 style={[
                   styles.deviceIconBg,
-                  isFlora && { backgroundColor: colors.primary.faded },
+                  { backgroundColor: colors.primary.faded },
                 ]}
               >
-                <Cpu
-                  size={24}
-                  color={isFlora ? colors.primary.main : colors.text.muted}
-                />
+                <Cpu size={24} color={colors.primary.main} />
               </View>
-
               <View style={styles.deviceInfo}>
                 <Typography
                   variant="body"
                   weight="bold"
-                  color={isFlora ? colors.primary.main : colors.text.primary}
+                  color={colors.primary.main}
                 >
                   {device.name}
                 </Typography>
@@ -258,29 +235,34 @@ export default function BluetoothSetupScreen() {
                   Sinal: {device.signal} dBm
                 </Typography>
               </View>
-
               {isThisConnecting ? (
                 <ActivityIndicator size="small" color={colors.primary.main} />
               ) : (
-                <ChevronRightIcon />
+                <View style={styles.chevronBox}>
+                  <Typography
+                    variant="caption"
+                    weight="bold"
+                    color={colors.primary.main}
+                  >
+                    Parear
+                  </Typography>
+                </View>
               )}
             </TouchableOpacity>
           );
         })}
-
         {!isScanning && devices.length === 0 && (
           <View style={styles.emptyState}>
             <Typography variant="body" color={colors.text.muted}>
-              Nenhum dispositivo encontrado.
+              Nenhum módulo em modo BLE encontrado.
             </Typography>
           </View>
         )}
       </View>
-
       {!isScanning && (
         <Button
           variant="outline"
-          label="Buscar Novamente"
+          label="Escanear Novamente"
           icon={RefreshCw}
           onPress={scanDevices}
           style={{ marginTop: 24 }}
@@ -306,7 +288,6 @@ export default function BluetoothSetupScreen() {
           </Typography>
         </View>
       </View>
-
       <View style={styles.infoBox}>
         <SmartphoneNfc
           size={28}
@@ -322,11 +303,10 @@ export default function BluetoothSetupScreen() {
           align="center"
           style={{ marginTop: 8 }}
         >
-          Agora, forneça os dados da rede Wi-Fi onde o sensor ficará, para que
-          ele possa enviar telemetria contínua para a Nuvem.
+          Forneça os dados da sua rede Wi-Fi (2.4GHz) para que o ESP32 possa
+          enviar a telemetria para a Nuvem.
         </Typography>
       </View>
-
       <View style={styles.formContainer}>
         <InputField
           label="Nome da Rede Wi-Fi (SSID)"
@@ -344,11 +324,10 @@ export default function BluetoothSetupScreen() {
           placeholder="••••••••"
         />
       </View>
-
       <ActionButton
         label="Transferir Credenciais"
         onPress={handlePair}
-        loadingLabel="Gravando no ESP32..."
+        loadingLabel="Gravando na Flash do ESP32..."
         successLabel="Sincronizado!"
         iconPosition="right"
         icon={Bluetooth}
@@ -356,55 +335,115 @@ export default function BluetoothSetupScreen() {
     </View>
   );
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {error && (plant || step !== "scan") ? (
-        <AlertMessage
-          title="Atenção"
-          message={error}
-          type="error"
-          onClose={clearMessages}
+  const renderPermissionBlockedStep = () => (
+    <View style={styles.stepContainer}>
+      <View
+        style={[
+          styles.infoBox,
+          {
+            borderColor: colors.danger.main,
+            backgroundColor: colors.danger.faded,
+          },
+        ]}
+      >
+        <Bluetooth
+          size={48}
+          color={colors.danger.main}
+          style={{ marginBottom: 16 }}
         />
-      ) : null}
-      {success ? (
-        <AlertMessage
-          title="Sucesso"
-          message={success}
-          type="success"
-          onClose={clearMessages}
+        <Typography variant="h2" align="center" color={colors.danger.main}>
+          Acesso Bloqueado
+        </Typography>
+        <Typography
+          variant="body"
+          color={colors.text.secondary}
+          align="center"
+          style={{ marginTop: 8 }}
+        >
+          As permissões foram negadas permanentemente no seu dispositivo e o
+          Android bloqueou novas solicitações.
+          {"\n\n"}
+          Abra as Configurações do seu aparelho, vá em "Permissões" e ative o
+          acesso a "Dispositivos Próximos" (ou Localização).
+        </Typography>
+      </View>
+      <View style={{ marginTop: 16 }}>
+        <ActionButton
+          label="Abrir Configurações do App"
+          onPress={() => Linking.openSettings()}
+          icon={Settings}
         />
-      ) : null}
+        <Button
+          variant="outline"
+          label="Já permiti, escanear novamente"
+          icon={RefreshCw}
+          onPress={() => {
+            setStep("scan");
+            scanDevices();
+          }}
+          style={{ marginTop: 16 }}
+        />
+      </View>
+    </View>
+  );
 
-      {step === "connected" && renderConnectedStep()}
-      {step === "scan" && renderScanStep()}
-      {step === "wifi" && renderWifiStep()}
-    </ScrollView>
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {error &&
+        (plant || step !== "scan") &&
+        step !== "permission_blocked" ? (
+          <AlertMessage
+            title="Atenção"
+            message={error}
+            type="error"
+            onClose={clearMessages}
+          />
+        ) : null}
+        {success ? (
+          <AlertMessage
+            title="Sucesso"
+            message={success}
+            type="success"
+            onClose={clearMessages}
+          />
+        ) : null}
+
+        {step === "connected" && renderConnectedStep()}
+        {step === "scan" && renderScanStep()}
+        {step === "wifi" && renderWifiStep()}
+        {step === "permission_blocked" && renderPermissionBlockedStep()}
+      </ScrollView>
+
+      <ConfirmationModal
+        isOpen={rationaleModalVisible}
+        onClose={handleRationaleCancel}
+        onConfirm={handleRationaleConfirm}
+        title="Permissão Necessária"
+        message={rationaleMessage}
+      />
+
+      <ConfirmationModal
+        isOpen={blockedModalVisible}
+        onClose={handleBlockedCancel}
+        onConfirm={handleBlockedConfirm}
+        title="Acesso Bloqueado"
+        message={blockedMessage}
+        confirmText="Configurações"
+        isDestructive={true}
+      />
+    </View>
   );
 }
 
-const ChevronRightIcon = () => (
-  <View style={styles.chevronBox}>
-    <Typography variant="caption" weight="bold" color={colors.text.muted}>
-      Conectar
-    </Typography>
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingVertical: 24 },
-
+  content: { paddingVertical: 16 },
   stepContainer: { flex: 1 },
-
-  radarHeader: {
-    alignItems: "center",
-    marginBottom: 32,
-    paddingTop: 16,
-  },
+  radarHeader: { alignItems: "center", marginBottom: 32, paddingTop: 16 },
   radarIconBox: {
     width: 80,
     height: 80,
@@ -415,26 +454,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary.light,
   },
-
   deviceList: { gap: 12 },
-  deviceCard: {
+  deviceCardHighlight: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primary.faded + "40",
     padding: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  deviceCardHighlight: {
     borderColor: colors.primary.main,
-    backgroundColor: colors.primary.faded + "40",
   },
   deviceIconBg: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: colors.surfaceHighlight,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -442,8 +475,10 @@ const styles = StyleSheet.create({
   chevronBox: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: colors.surfaceHighlight,
+    backgroundColor: colors.surface,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary.main,
   },
   emptyState: {
     padding: 24,
@@ -454,7 +489,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderStyle: "dashed",
   },
-
   connectedBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -482,7 +516,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 24,
   },
-
   detailsContainer: {
     backgroundColor: colors.surface,
     borderRadius: 16,
