@@ -170,12 +170,7 @@ export function AlertCard({ alert, onPress }: AlertCardProps) {
       </Typography>
 
       <View style={styles.cardBTN}>
-        <Typography
-          variant="caption"
-          weight="bold"
-          color={urgency.accent}
-          style={{ marginTop: 4 }}
-        >
+        <Typography variant="caption" weight="bold" color={urgency.accent}>
           TOQUE PARA VER A SOLUÇÃO COMPLETA
         </Typography>
         <ArrowRight size={16} color={urgency.accent} />

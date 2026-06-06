@@ -9,7 +9,7 @@ import {
   AlertMessage,
 } from "react-native-th-components";
 import { useManualControlViewModel } from "../viewModels/plants.viewModel";
-import { InteractionManager } from "react-native";
+import { InteractionManager, Platform } from "react-native";
 import { useState, useEffect } from "react";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 
@@ -49,6 +49,11 @@ export default function ManualControlScreen() {
   };
 
   useEffect(() => {
+    if (Platform.OS === "web") {
+      setIsReady(true);
+      return;
+    }
+
     const task = InteractionManager.runAfterInteractions(() => {
       setIsReady(true);
     });

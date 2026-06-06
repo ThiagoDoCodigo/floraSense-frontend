@@ -1,9 +1,12 @@
+import { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   Image,
+  InteractionManager,
+  Platform,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Leaf, Camera, Info, Tag, Save } from "lucide-react-native";
@@ -14,6 +17,7 @@ import {
   Typography,
   colors,
   AlertMessage,
+  ConfirmationModal,
 } from "react-native-th-components";
 import { useEditPlantViewModel } from "../viewModels/plants.viewModel";
 import {
@@ -32,15 +36,15 @@ import {
 
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
-import { InteractionManager } from "react-native";
-import { useState, useEffect } from "react";
 import RenderChip from "../../../components/RenderChip";
 
 export default function EditPlantScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { plant } = route.params;
+
   const [isReady, setIsReady] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const {
     name,
@@ -48,6 +52,7 @@ export default function EditPlantScreen() {
     especie,
     setEspecie,
     imageUrl,
+    localImageUri,
     phaseOfLife,
     setPhaseOfLife,
     environmentType,
@@ -62,9 +67,21 @@ export default function EditPlantScreen() {
     saveChanges,
     clearMessages,
     fieldErrors,
+    handleImagePick,
+    imageRationaleVisible,
+    imageBlockedVisible,
+    handleRationaleConfirm,
+    handleRationaleCancel,
+    handleBlockedConfirm,
+    handleBlockedCancel,
   } = useEditPlantViewModel(plant);
 
   useEffect(() => {
+    if (Platform.OS === "web") {
+      setIsReady(true);
+      return;
+    }
+
     const task = InteractionManager.runAfterInteractions(() => {
       setIsReady(true);
     });
@@ -111,9 +128,7 @@ export default function EditPlantScreen() {
     }
   };
 
-  const handleImagePick = () => {
-    console.log("Abrir galeria para trocar a foto da planta");
-  };
+  const imageToDisplay = localImageUri || imageUrl;
 
   return (
     <View style={styles.container}>
@@ -144,8 +159,12 @@ export default function EditPlantScreen() {
             onPress={handleImagePick}
             style={styles.imageWrapper}
           >
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.plantImage} />
+            {imageToDisplay && !imageError ? (
+              <Image
+                source={{ uri: imageToDisplay }}
+                style={styles.plantImage}
+                onError={() => setImageError(true)}
+              />
             ) : (
               <View style={styles.placeholderImage}>
                 <Leaf size={40} color={colors.primary.main} />
@@ -328,6 +347,24 @@ export default function EditPlantScreen() {
           errorLabel="Erro ao atualizar os dados da planta."
         />
       </View>
+
+      <ConfirmationModal
+        isOpen={imageRationaleVisible}
+        onClose={handleRationaleCancel}
+        onConfirm={handleRationaleConfirm}
+        title="Acesso à Galeria"
+        message="Para personalizar sua planta, o FloraSense precisa de acesso à sua galeria de fotos. Você autoriza?"
+      />
+
+      <ConfirmationModal
+        isOpen={imageBlockedVisible}
+        onClose={handleBlockedCancel}
+        onConfirm={handleBlockedConfirm}
+        title="Acesso Bloqueado"
+        message="O acesso às fotos foi bloqueado. Para escolher uma imagem, abra as Configurações do seu aparelho e conceda a permissão."
+        confirmText="Configurações"
+        isDestructive={true}
+      />
     </View>
   );
 }

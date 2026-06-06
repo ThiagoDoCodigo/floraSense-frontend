@@ -4,6 +4,7 @@ import type {
   SensorReading,
   PaginatedResponse,
 } from "../models/plant.model";
+import { Platform } from "react-native";
 
 class PlantService {
   async getPlants(
@@ -21,13 +22,74 @@ class PlantService {
     return data;
   }
 
-  async addPlant(payload: Partial<Plant>): Promise<Plant> {
-    const { data } = await floraSenseApi.post<Plant>("/plants", payload);
+  async addPlant(
+    payload: Partial<Plant>,
+    localImageUri?: string,
+  ): Promise<Plant> {
+    const formData = new FormData();
+
+    Object.keys(payload).forEach((key) => {
+      if (payload[key as keyof Plant] !== undefined) {
+        formData.append(key, String(payload[key as keyof Plant]));
+      }
+    });
+
+    if (localImageUri) {
+      const filename = localImageUri.split("/").pop() || "plant.jpg";
+      formData.append("file", {
+        uri:
+          Platform.OS === "android"
+            ? localImageUri
+            : localImageUri.replace("file://", ""),
+        name: filename,
+        type: "image/jpeg",
+      } as any);
+    }
+
+    const { data } = await floraSenseApi.post<Plant>("/plants", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      transformRequest: () => formData,
+    });
     return data;
   }
 
-  async updatePlant(id: string, payload: Partial<Plant>): Promise<Plant> {
-    const { data } = await floraSenseApi.patch<Plant>(`/plants/${id}`, payload);
+  async updatePlant(
+    id: string,
+    payload: Partial<Plant>,
+    localImageUri?: string,
+  ): Promise<Plant> {
+    const formData = new FormData();
+
+    Object.keys(payload).forEach((key) => {
+      if (payload[key as keyof Plant] !== undefined) {
+        formData.append(key, String(payload[key as keyof Plant]));
+      }
+    });
+
+    if (localImageUri) {
+      const filename = localImageUri.split("/").pop() || "plant.jpg";
+      formData.append("file", {
+        uri:
+          Platform.OS === "android"
+            ? localImageUri
+            : localImageUri.replace("file://", ""),
+        name: filename,
+        type: "image/jpeg",
+      } as any);
+    }
+
+    const { data } = await floraSenseApi.patch<Plant>(
+      `/plants/${id}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        transformRequest: () => formData,
+      },
+    );
     return data;
   }
 
@@ -71,37 +133,6 @@ class PlantService {
 
   async forceReading(plantId: string): Promise<void> {
     await floraSenseApi.post(`/plants/${plantId}/force-reading`);
-  }
-
-  async triggerManualWatering(
-    plantId: string,
-    volumeMl: number,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (volumeMl <= 0 || volumeMl > 1000) {
-          return reject(
-            new Error("Volume inválido. Insira entre 1 e 1000 ml."),
-          );
-        }
-        resolve();
-      }, 1500);
-    });
-  }
-
-  async updateESPConfig(plantId: string, interval: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (interval < 15) {
-          return reject(
-            new Error(
-              "O intervalo mínimo de leitura é 15 minutos para poupar bateria.",
-            ),
-          );
-        }
-        resolve();
-      }, 1500);
-    });
   }
 }
 

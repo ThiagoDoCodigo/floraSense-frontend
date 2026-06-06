@@ -2,6 +2,7 @@ import { View, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { ChevronRight, Leaf, type LucideIcon } from "lucide-react-native";
 import { colors } from "react-native-th-components";
 import { Typography } from "react-native-th-components";
+import { useState } from "react";
 
 interface CustomCardProps {
   title: string;
@@ -26,6 +27,8 @@ export default function CustomCard({
   onPressRight,
   rightIcon: RightIcon,
 }: CustomCardProps) {
+  const [imageError, setImageError] = useState(false);
+
   return (
     <TouchableOpacity
       activeOpacity={0.7}
@@ -34,11 +37,12 @@ export default function CustomCard({
     >
       <View style={styles.container}>
         <View style={styles.imageWrapper}>
-          {image ? (
+          {image && !imageError ? (
             <Image
               source={{ uri: image }}
               style={styles.image}
               resizeMode="cover"
+              onError={() => setImageError(true)}
             />
           ) : (
             <View style={styles.placeholderContainer}>

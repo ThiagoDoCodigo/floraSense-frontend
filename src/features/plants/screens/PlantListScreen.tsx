@@ -40,8 +40,8 @@ export default function PlantListScreen() {
   const renderItem = ({ item }: { item: Plant }) => (
     <CustomCard
       title={item.name}
-      description={phaseTranslations[item.phaseOfLife as PlantPhaseEnum]}
-      subDescription={`Espécie: ${item.especie}`}
+      description={item.especie}
+      subDescription={`Período: ${phaseTranslations[item.phaseOfLife as PlantPhaseEnum]}`}
       subIcon={Leaf}
       image={item.imageUrl}
       bottomButtonText="Acessar Diagnósticos"

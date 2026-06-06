@@ -30,7 +30,7 @@ import { EmptyState } from "../../../components/EmptyState";
 import { phaseTranslations } from "../utils/translatePlantValues";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
-import React from "react";
+import { useState } from "react";
 import { LevelUrgentEnum } from "../../home/models/home.model";
 
 const getUrgencyConfig = (level: LevelUrgentEnum | null) => {
@@ -72,6 +72,8 @@ export default function PlantDetailScreen() {
   const navigation = useNavigation<any>();
   const { plantId } = route.params;
 
+  const [imageError, setImageError] = useState(false);
+
   const {
     plant,
     readings,
@@ -111,15 +113,25 @@ export default function PlantDetailScreen() {
     return (
       <View style={styles.headerSection}>
         <View style={styles.heroContainer}>
-          {plant.imageUrl ? (
-            <Image source={{ uri: plant.imageUrl }} style={styles.heroImage} />
+          {plant.imageUrl && !imageError ? (
+            <Image
+              source={{ uri: plant.imageUrl }}
+              style={styles.heroImage}
+              onError={() => setImageError(true)}
+            />
           ) : (
             <View
               style={[
                 styles.heroImage,
-                { backgroundColor: colors.primary.faded },
+                {
+                  backgroundColor: colors.primary.faded,
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
               ]}
-            />
+            >
+              <Leaf size={60} color={colors.primary.main} />
+            </View>
           )}
           <View style={styles.heroOverlay}>
             <View style={styles.heroBadge}>
@@ -128,7 +140,8 @@ export default function PlantDetailScreen() {
                 weight="bold"
                 color={colors.text.inverse}
               >
-                {plant.especie.toUpperCase()}
+                Período:{" "}
+                {phaseTranslations[plant.phaseOfLife as PlantPhaseEnum]}
               </Typography>
             </View>
             <Typography
@@ -140,10 +153,11 @@ export default function PlantDetailScreen() {
             </Typography>
             <Typography
               variant="caption"
+              italic={true}
               color={colors.text.inverse}
               style={{ opacity: 0.8 }}
             >
-              {phaseTranslations[plant.phaseOfLife as PlantPhaseEnum]}
+              {plant.especie}
             </Typography>
           </View>
         </View>
@@ -620,7 +634,7 @@ const styles = StyleSheet.create({
   liveStatusContainer: {
     backgroundColor: colors.surface,
     borderRadius: 24,
-    padding: 20,
+    padding: 18,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 32,

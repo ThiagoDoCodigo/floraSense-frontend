@@ -4,6 +4,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import {
@@ -15,6 +16,7 @@ import {
   RefreshCw,
   SmartphoneNfc,
   Unplug,
+  Settings,
 } from "lucide-react-native";
 import {
   InputField,
@@ -23,7 +25,9 @@ import {
   Button,
   colors,
   AlertMessage,
+  ConfirmationModal,
 } from "react-native-th-components";
+
 import { useBluetoothSetupViewModel } from "../viewModels/plants.viewModel";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
 import { ErrorIndicator } from "../../../components/ErrorIndicator";
@@ -35,6 +39,7 @@ export default function BluetoothSetupScreen() {
 
   const {
     step,
+    setStep,
     plant,
     isScanning,
     devices,
@@ -54,6 +59,14 @@ export default function BluetoothSetupScreen() {
     pairDevice,
     unpairDevice,
     clearMessages,
+    rationaleModalVisible,
+    blockedModalVisible,
+    rationaleMessage,
+    blockedMessage,
+    handleRationaleConfirm,
+    handleRationaleCancel,
+    handleBlockedConfirm,
+    handleBlockedCancel,
   } = useBluetoothSetupViewModel(plantId);
 
   const handlePair = async () => {
@@ -80,7 +93,11 @@ export default function BluetoothSetupScreen() {
 
   if (
     step === "error" ||
-    (error && !plant && step !== "connected" && step !== "wifi")
+    (error &&
+      !plant &&
+      step !== "connected" &&
+      step !== "wifi" &&
+      step !== "permission_blocked")
   ) {
     return (
       <ErrorIndicator
@@ -318,32 +335,107 @@ export default function BluetoothSetupScreen() {
     </View>
   );
 
+  const renderPermissionBlockedStep = () => (
+    <View style={styles.stepContainer}>
+      <View
+        style={[
+          styles.infoBox,
+          {
+            borderColor: colors.danger.main,
+            backgroundColor: colors.danger.faded,
+          },
+        ]}
+      >
+        <Bluetooth
+          size={48}
+          color={colors.danger.main}
+          style={{ marginBottom: 16 }}
+        />
+        <Typography variant="h2" align="center" color={colors.danger.main}>
+          Acesso Bloqueado
+        </Typography>
+        <Typography
+          variant="body"
+          color={colors.text.secondary}
+          align="center"
+          style={{ marginTop: 8 }}
+        >
+          As permissões foram negadas permanentemente no seu dispositivo e o
+          Android bloqueou novas solicitações.
+          {"\n\n"}
+          Abra as Configurações do seu aparelho, vá em "Permissões" e ative o
+          acesso a "Dispositivos Próximos" (ou Localização).
+        </Typography>
+      </View>
+      <View style={{ marginTop: 16 }}>
+        <ActionButton
+          label="Abrir Configurações do App"
+          onPress={() => Linking.openSettings()}
+          icon={Settings}
+        />
+        <Button
+          variant="outline"
+          label="Já permiti, escanear novamente"
+          icon={RefreshCw}
+          onPress={() => {
+            setStep("scan");
+            scanDevices();
+          }}
+          style={{ marginTop: 16 }}
+        />
+      </View>
+    </View>
+  );
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {error && (plant || step !== "scan") ? (
-        <AlertMessage
-          title="Atenção"
-          message={error}
-          type="error"
-          onClose={clearMessages}
-        />
-      ) : null}
-      {success ? (
-        <AlertMessage
-          title="Sucesso"
-          message={success}
-          type="success"
-          onClose={clearMessages}
-        />
-      ) : null}
-      {step === "connected" && renderConnectedStep()}
-      {step === "scan" && renderScanStep()}
-      {step === "wifi" && renderWifiStep()}
-    </ScrollView>
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {error &&
+        (plant || step !== "scan") &&
+        step !== "permission_blocked" ? (
+          <AlertMessage
+            title="Atenção"
+            message={error}
+            type="error"
+            onClose={clearMessages}
+          />
+        ) : null}
+        {success ? (
+          <AlertMessage
+            title="Sucesso"
+            message={success}
+            type="success"
+            onClose={clearMessages}
+          />
+        ) : null}
+
+        {step === "connected" && renderConnectedStep()}
+        {step === "scan" && renderScanStep()}
+        {step === "wifi" && renderWifiStep()}
+        {step === "permission_blocked" && renderPermissionBlockedStep()}
+      </ScrollView>
+
+      <ConfirmationModal
+        isOpen={rationaleModalVisible}
+        onClose={handleRationaleCancel}
+        onConfirm={handleRationaleConfirm}
+        title="Permissão Necessária"
+        message={rationaleMessage}
+      />
+
+      <ConfirmationModal
+        isOpen={blockedModalVisible}
+        onClose={handleBlockedCancel}
+        onConfirm={handleBlockedConfirm}
+        title="Acesso Bloqueado"
+        message={blockedMessage}
+        confirmText="Configurações"
+        isDestructive={true}
+      />
+    </View>
   );
 }
 
