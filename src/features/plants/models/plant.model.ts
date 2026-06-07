@@ -61,6 +61,7 @@ export interface SensorReading {
   isRead: boolean;
   parametersIdeas: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface PaginatedResponse<T> {

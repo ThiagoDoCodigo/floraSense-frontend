@@ -23,6 +23,7 @@ export interface DashboardAlert {
   isRead: boolean;
   parametersIdeas: string | null;
   created_at: string;
+  updated_at: string;
   plant?: {
     id: string;
     name: string;

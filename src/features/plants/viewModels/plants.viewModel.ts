@@ -1,5 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Platform, Linking } from "react-native";
 import plantService from "../services/plant.service";
+import { useAuth } from "../../../contexts/AuthContext";
+import { useFocusEffect } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
+import NetInfo from "@react-native-community/netinfo";
+import socketService from "../../../services/socket.service";
+import { BleManager, Device } from "react-native-ble-plx";
+import base64 from "react-native-base64";
+import { PermissionsAndroid } from "react-native";
+import { PlantRepository } from "../../../database/repositories/plant.repository";
+import { ReadingRepository } from "../../../database/repositories/reading.repository";
 import {
   Plant,
   SensorReading,
@@ -9,13 +20,6 @@ import {
   SunlightExposureEnum,
   SubstrateTypeEnum,
 } from "../models/plant.model";
-import { useFocusEffect } from "@react-navigation/native";
-import { BleManager, Device } from "react-native-ble-plx";
-import base64 from "react-native-base64";
-import { useAuth } from "../../../contexts/AuthContext";
-import { Platform, PermissionsAndroid, Linking } from "react-native";
-import socketService from "../../../services/socket.service";
-import * as ImagePicker from "expo-image-picker";
 
 let bleManager: BleManager | null = null;
 
@@ -38,17 +42,53 @@ export const usePlantListViewModel = () => {
       setError("");
 
       try {
-        const response = await plantService.getPlants(pageNumber);
-        const newData = response?.data ?? [];
+        const LIMIT = 10;
 
-        setPlants((prev) => (isRefresh ? newData : [...prev, ...newData]));
-        setHasMore(pageNumber < (response?.totalPages ?? 1));
+        const localPlants = await PlantRepository.getAll();
+        const startIndex = (pageNumber - 1) * LIMIT;
+        const endIndex = startIndex + LIMIT;
+        const paginatedLocal = localPlants.slice(startIndex, endIndex);
+
+        setPlants((prev) => {
+          if (isRefresh) return paginatedLocal;
+          const existingIds = new Set(prev.map((p) => p.id));
+          const unique = paginatedLocal.filter((p) => !existingIds.has(p.id));
+          return [...prev, ...unique];
+        });
+        setHasMore(localPlants.length > endIndex);
         setPage(pageNumber);
+
+        const netInfo = await NetInfo.fetch();
+
+        if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
+          const response = await plantService.getPlants(pageNumber, LIMIT);
+          const newData = response?.data ?? [];
+
+          if (newData.length > 0) {
+            try {
+              await PlantRepository.upsert(newData);
+            } catch (dbErr) {
+              console.error("[CACHE ERROR] Falha ao salvar lista:", dbErr);
+            }
+          }
+
+          setPlants((prev) => {
+            if (isRefresh) return newData;
+            const existingIds = new Set(prev.map((p) => p.id));
+            const unique = newData.filter((p) => !existingIds.has(p.id));
+            return [...prev, ...unique];
+          });
+          setHasMore(pageNumber < (response?.totalPages ?? 1));
+        }
       } catch (err: any) {
-        setError(
-          err?.response?.data?.message ??
-            "Falha silenciosa ao buscar sua lista de plantas.",
-        );
+        if (err.message === "OFFLINE_MODE" || err.code === "ERR_NETWORK") {
+          console.log("[DEBUG] Interceptado modo offline na listagem.");
+        } else {
+          setError(
+            err?.response?.data?.message ??
+              "Falha silenciosa ao sincronizar sua lista com a nuvem.",
+          );
+        }
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -95,25 +135,74 @@ export const usePlantDashboardViewModel = (plantId: string) => {
       setError("");
 
       try {
-        if (isRefresh) {
-          const plantData = await plantService.getPlantById(plantId);
-          setPlant(plantData ?? null);
-        }
-        const readingsResponse = await plantService.getPlantReadings(
-          plantId,
-          pageNum,
-          10,
-        );
-        const newData = readingsResponse?.data ?? [];
+        const LIMIT = 10;
 
-        setReadings((prev) => (isRefresh ? newData : [...prev, ...newData]));
-        setHasMore(pageNum < (readingsResponse?.totalPages ?? 1));
+        const localPlants = await PlantRepository.getAll();
+        const localPlant = localPlants.find((p) => p.id === plantId);
+        if (localPlant) setPlant(localPlant);
+
+        const localReadings =
+          await ReadingRepository.getReadingsByPlantId(plantId);
+        const startIndex = (pageNum - 1) * LIMIT;
+        const endIndex = startIndex + LIMIT;
+        const paginatedLocal = localReadings.slice(startIndex, endIndex);
+
+        setReadings((prev) => {
+          if (isRefresh) return paginatedLocal;
+          const existingIds = new Set(prev.map((r) => r.id));
+          const unique = paginatedLocal.filter((r) => !existingIds.has(r.id));
+          return [...prev, ...unique];
+        });
+        setHasMore(localReadings.length > endIndex);
         setPage(pageNum);
+
+        const netInfo = await NetInfo.fetch();
+
+        if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
+          let latestPlant: Plant | null = null;
+
+          if (isRefresh) {
+            latestPlant = await plantService.getPlantById(plantId);
+            setPlant(latestPlant ?? null);
+          }
+
+          const readingsResponse = await plantService.getPlantReadings(
+            plantId,
+            pageNum,
+            LIMIT,
+          );
+          const newData = readingsResponse?.data ?? [];
+
+          if (newData.length > 0) {
+            try {
+              const plantToSave = latestPlant || localPlant;
+              if (plantToSave) {
+                await PlantRepository.upsert([plantToSave]);
+              }
+              await ReadingRepository.upsert(newData);
+            } catch (dbErr) {
+              console.error("[CACHE ERROR] Integridade FK falhou:", dbErr);
+            }
+          }
+
+          setReadings((prev) => {
+            if (isRefresh) return newData;
+            const existingIds = new Set(prev.map((r) => r.id));
+            const uniqueNewData = newData.filter((r) => !existingIds.has(r.id));
+            return [...prev, ...uniqueNewData];
+          });
+
+          setHasMore(pageNum < (readingsResponse?.totalPages ?? 1));
+        }
       } catch (err: any) {
-        setError(
-          err?.response?.data?.message ??
-            "Não foi possível carregar os dados do sensor.",
-        );
+        if (err.message === "OFFLINE_MODE" || err.code === "ERR_NETWORK") {
+          console.log("[DEBUG] Interceptado modo offline no Dashboard.");
+        } else {
+          setError(
+            err?.response?.data?.message ??
+              "Não foi possível sincronizar os dados do sensor.",
+          );
+        }
       } finally {
         setLoading(false);
         setLoadingMore(false);
