@@ -22,6 +22,7 @@ import {
   Sun,
   Moon,
   MonitorSmartphone,
+  Palette,
 } from "lucide-react-native";
 
 import {
@@ -30,8 +31,10 @@ import {
   Typography,
   colors,
   AlertMessage,
+  ConfirmationModal,
 } from "react-native-th-components";
 import { useProfileViewModel } from "../viewModels/profile.viewModel";
+import { useState } from "react";
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -53,7 +56,10 @@ export default function ProfileScreen() {
     toggleNotifications,
     toggleUrgentAlertsOnly,
     changeTheme,
+    changeThemeFamily,
   } = useProfileViewModel();
+
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const handleUpdate = async () => {
     try {
@@ -64,17 +70,18 @@ export default function ProfileScreen() {
   };
 
   const handleChangePhoto = () => {
-    console.log("Abrir galeria de imagens (Integração futura)");
+    console.log("Abrir galeria de imagens");
   };
 
   const handleLogout = async () => {
     try {
+      setIsModalVisible(false);
       if (logout) {
         await logout();
       }
       navigation.reset({ index: 0, routes: [{ name: "AuthFlow" }] });
     } catch (e) {
-      console.error("Erro ao encerrar sessão:", e);
+      console.error(e);
     }
   };
 
@@ -97,6 +104,14 @@ export default function ProfileScreen() {
           onClose={clearSuccess}
         />
       ) : null}
+
+      <ConfirmationModal
+        isOpen={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        onConfirm={handleLogout}
+        title="Deseja realmente sair?"
+        message="Voce deseja realmente sair da sua conta?"
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -144,7 +159,12 @@ export default function ProfileScreen() {
             DADOS PESSOAIS
           </Typography>
 
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <InputField
               label="Nome Completo"
               icon={User}
@@ -187,11 +207,20 @@ export default function ProfileScreen() {
 
           <View style={styles.card}>
             <View style={styles.settingRow}>
-              <View style={[styles.iconBox, { backgroundColor: colors.primary.faded }]}>
+              <View
+                style={[
+                  styles.iconBox,
+                  { backgroundColor: colors.primary.faded },
+                ]}
+              >
                 <Bell size={20} color={colors.primary.main} />
               </View>
               <View style={styles.settingTexts}>
-                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                <Typography
+                  variant="body"
+                  weight="semibold"
+                  color={colors.text.primary}
+                >
                   Notificações
                 </Typography>
                 <Typography variant="caption" color={colors.text.secondary}>
@@ -201,7 +230,10 @@ export default function ProfileScreen() {
               <Switch
                 value={settings.notificationsEnabled}
                 onValueChange={toggleNotifications}
-                trackColor={{ false: colors.border, true: colors.primary.light }}
+                trackColor={{
+                  false: colors.border,
+                  true: colors.primary.light,
+                }}
                 thumbColor={
                   settings.notificationsEnabled
                     ? colors.primary.main
@@ -213,11 +245,20 @@ export default function ProfileScreen() {
             <View style={styles.divider} />
 
             <View style={styles.settingRow}>
-              <View style={[styles.iconBox, { backgroundColor: colors.warning.faded }]}>
+              <View
+                style={[
+                  styles.iconBox,
+                  { backgroundColor: colors.warning.faded },
+                ]}
+              >
                 <AlertTriangle size={20} color={colors.warning.main} />
               </View>
               <View style={styles.settingTexts}>
-                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                <Typography
+                  variant="body"
+                  weight="semibold"
+                  color={colors.text.primary}
+                >
                   Somente Urgentes
                 </Typography>
                 <Typography variant="caption" color={colors.text.secondary}>
@@ -228,7 +269,10 @@ export default function ProfileScreen() {
                 value={settings.urgentAlertsOnly}
                 onValueChange={toggleUrgentAlertsOnly}
                 disabled={!settings.notificationsEnabled}
-                trackColor={{ false: colors.border, true: colors.warning.faded }}
+                trackColor={{
+                  false: colors.border,
+                  true: colors.warning.faded,
+                }}
                 thumbColor={
                   settings.urgentAlertsOnly
                     ? colors.warning.main
@@ -240,26 +284,40 @@ export default function ProfileScreen() {
             <View style={styles.divider} />
 
             <View style={styles.settingRow}>
-              <View style={[styles.iconBox, { backgroundColor: colors.info.faded }]}>
+              <View
+                style={[styles.iconBox, { backgroundColor: colors.info.main }]}
+              >
                 <Moon size={20} color={colors.info.main} />
               </View>
               <View style={styles.settingTexts}>
-                <Typography variant="body" weight="semibold" color={colors.text.primary}>
-                  Tema do Aplicativo
+                <Typography
+                  variant="body"
+                  weight="semibold"
+                  color={colors.text.primary}
+                >
+                  Modo de Exibição
                 </Typography>
                 <Typography variant="caption" color={colors.text.secondary}>
-                  Escolha o modo de cores
+                  Escolha o modo claro ou escuro
                 </Typography>
               </View>
             </View>
 
-            <View style={[styles.themeSelector, { backgroundColor: colors.surfaceHighlight }]}>
+            <View
+              style={[
+                styles.themeSelector,
+                { backgroundColor: colors.surfaceHighlight },
+              ]}
+            >
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => changeTheme("light")}
                 style={[
                   styles.themeOption,
-                  settings.themePreference === "light" && [styles.themeOptionActive, { backgroundColor: colors.surface }],
+                  settings.themePreference === "light" && [
+                    styles.themeOptionActive,
+                    { backgroundColor: colors.surface },
+                  ],
                 ]}
               >
                 <Sun
@@ -272,7 +330,9 @@ export default function ProfileScreen() {
                 />
                 <Typography
                   variant="caption"
-                  weight={settings.themePreference === "light" ? "bold" : "medium"}
+                  weight={
+                    settings.themePreference === "light" ? "bold" : "medium"
+                  }
                   color={
                     settings.themePreference === "light"
                       ? colors.primary.main
@@ -289,7 +349,10 @@ export default function ProfileScreen() {
                 onPress={() => changeTheme("dark")}
                 style={[
                   styles.themeOption,
-                  settings.themePreference === "dark" && [styles.themeOptionActive, { backgroundColor: colors.surface }],
+                  settings.themePreference === "dark" && [
+                    styles.themeOptionActive,
+                    { backgroundColor: colors.surface },
+                  ],
                 ]}
               >
                 <Moon
@@ -302,7 +365,9 @@ export default function ProfileScreen() {
                 />
                 <Typography
                   variant="caption"
-                  weight={settings.themePreference === "dark" ? "bold" : "medium"}
+                  weight={
+                    settings.themePreference === "dark" ? "bold" : "medium"
+                  }
                   color={
                     settings.themePreference === "dark"
                       ? colors.primary.main
@@ -319,7 +384,10 @@ export default function ProfileScreen() {
                 onPress={() => changeTheme("auto")}
                 style={[
                   styles.themeOption,
-                  settings.themePreference === "auto" && [styles.themeOptionActive, { backgroundColor: colors.surface }],
+                  settings.themePreference === "auto" && [
+                    styles.themeOptionActive,
+                    { backgroundColor: colors.surface },
+                  ],
                 ]}
               >
                 <MonitorSmartphone
@@ -332,7 +400,9 @@ export default function ProfileScreen() {
                 />
                 <Typography
                   variant="caption"
-                  weight={settings.themePreference === "auto" ? "bold" : "medium"}
+                  weight={
+                    settings.themePreference === "auto" ? "bold" : "medium"
+                  }
                   color={
                     settings.themePreference === "auto"
                       ? colors.primary.main
@@ -343,6 +413,85 @@ export default function ProfileScreen() {
                   Auto
                 </Typography>
               </TouchableOpacity>
+            </View>
+
+            <View style={{ marginTop: 16 }}>
+              <View style={styles.settingRow}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: colors.primary.faded },
+                  ]}
+                >
+                  <Palette size={20} color={colors.primary.main} />
+                </View>
+                <View style={styles.settingTexts}>
+                  <Typography
+                    variant="body"
+                    weight="semibold"
+                    color={colors.text.primary}
+                  >
+                    Cor Principal
+                  </Typography>
+                  <Typography variant="caption" color={colors.text.secondary}>
+                    Escolha o sotaque do app
+                  </Typography>
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.themeSelector,
+                  { backgroundColor: colors.surfaceHighlight },
+                ]}
+              >
+                {(["default", "blue", "violet"] as const).map((family) => (
+                  <TouchableOpacity
+                    key={family}
+                    activeOpacity={0.7}
+                    onPress={() => changeThemeFamily(family)}
+                    style={[
+                      styles.themeOption,
+                      settings.themeFamily === family && [
+                        styles.themeOptionActive,
+                        { backgroundColor: colors.surface },
+                      ],
+                    ]}
+                  >
+                    <View
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 7,
+                        backgroundColor:
+                          family === "default"
+                            ? "#748653"
+                            : family === "blue"
+                              ? "#0ea5e9"
+                              : "#9333ea",
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      weight={
+                        settings.themeFamily === family ? "bold" : "medium"
+                      }
+                      color={
+                        settings.themeFamily === family
+                          ? colors.primary.main
+                          : colors.text.muted
+                      }
+                      style={{ marginLeft: 6 }}
+                    >
+                      {family === "default"
+                        ? "Natureza"
+                        : family === "blue"
+                          ? "Azul"
+                          : "Violeta"}
+                    </Typography>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </View>
         </View>
@@ -357,7 +506,12 @@ export default function ProfileScreen() {
             SEGURANÇA E CONTA
           </Typography>
 
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.6}
@@ -366,7 +520,7 @@ export default function ProfileScreen() {
               <View
                 style={[
                   styles.menuIconBox,
-                  { backgroundColor: colors.info.light },
+                  { backgroundColor: colors.info.main },
                 ]}
               >
                 <ShieldCheck size={20} color={colors.info.main} />
@@ -386,7 +540,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.6}
-              onPress={handleLogout}
+              onPress={() => setIsModalVisible(true)}
             >
               <View
                 style={[
@@ -419,11 +573,20 @@ export default function ProfileScreen() {
 
           <View style={styles.card}>
             <View style={styles.settingRow}>
-              <View style={[styles.iconBox, { backgroundColor: colors.success.light }]}>
+              <View
+                style={[
+                  styles.iconBox,
+                  { backgroundColor: colors.success.light },
+                ]}
+              >
                 <Leaf size={20} color={colors.success.main} />
               </View>
               <View style={styles.settingTexts}>
-                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                <Typography
+                  variant="body"
+                  weight="semibold"
+                  color={colors.text.primary}
+                >
                   FloraSense
                 </Typography>
                 <Typography variant="caption" color={colors.text.secondary}>
@@ -435,11 +598,20 @@ export default function ProfileScreen() {
             <View style={styles.divider} />
 
             <View style={styles.settingRow}>
-              <View style={[styles.iconBox, { backgroundColor: colors.surfaceHighlight }]}>
+              <View
+                style={[
+                  styles.iconBox,
+                  { backgroundColor: colors.surfaceHighlight },
+                ]}
+              >
                 <Info size={20} color={colors.text.secondary} />
               </View>
               <View style={styles.settingTexts}>
-                <Typography variant="body" weight="semibold" color={colors.text.primary}>
+                <Typography
+                  variant="body"
+                  weight="semibold"
+                  color={colors.text.primary}
+                >
                   Sobre
                 </Typography>
                 <Typography variant="caption" color={colors.text.secondary}>
@@ -455,7 +627,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
 
   avatarSection: { alignItems: "center", marginTop: 16, marginBottom: 32 },
@@ -543,14 +715,12 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.surfaceHighlight,
     marginVertical: 12,
     marginLeft: 54,
   },
   themeSelector: {
     flexDirection: "row",
     marginTop: 16,
-    backgroundColor: colors.surfaceHighlight,
     borderRadius: 12,
     padding: 4,
   },
@@ -563,7 +733,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   themeOptionActive: {
-    backgroundColor: colors.surface,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

@@ -1,4 +1,11 @@
-import { View, StyleSheet, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Platform,
+  InteractionManager,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Lock, LogIn, Mail } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,6 +19,8 @@ import {
   AlertMessage,
 } from "react-native-th-components";
 import { useAuthViewModel } from "../viewModel/auth.viewModel";
+import { useEffect, useState } from "react";
+import { LoadingIndicator } from "../../../components/LoadingIndicator";
 
 const imageFlora = require("../../../../assets/florasense.png");
 
@@ -28,6 +37,30 @@ export default function LoginScreen() {
     performLogin,
     isProcessing,
   } = useAuthViewModel();
+
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      setIsReady(true);
+      return;
+    }
+
+    const task = InteractionManager.runAfterInteractions(() => {
+      setIsReady(true);
+    });
+    return () => task.cancel();
+  }, []);
+
+  if (!isReady) {
+    return (
+      <LoadingIndicator
+        message="Carregando..."
+        subMessage="Aguarde um momento"
+        fullScreen={true}
+      />
+    );
+  }
 
   const handleLogin = async () => {
     await performLogin();

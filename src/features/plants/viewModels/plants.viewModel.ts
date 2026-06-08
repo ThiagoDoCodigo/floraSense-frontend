@@ -1,5 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Platform, Linking } from "react-native";
 import plantService from "../services/plant.service";
+import { useAuth } from "../../../contexts/AuthContext";
+import { useFocusEffect } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
+import NetInfo from "@react-native-community/netinfo";
+import socketService from "../../../services/socket.service";
+import { BleManager, Device } from "react-native-ble-plx";
+import base64 from "react-native-base64";
+import { PermissionsAndroid } from "react-native";
+import { PlantRepository } from "../../../database/repositories/plant.repository";
+import { ReadingRepository } from "../../../database/repositories/reading.repository";
 import {
   Plant,
   SensorReading,
@@ -8,14 +19,8 @@ import {
   EnvironmentTypeEnum,
   SunlightExposureEnum,
   SubstrateTypeEnum,
+  FilterOptions,
 } from "../models/plant.model";
-import { useFocusEffect } from "@react-navigation/native";
-import { BleManager, Device } from "react-native-ble-plx";
-import base64 from "react-native-base64";
-import { useAuth } from "../../../contexts/AuthContext";
-import { Platform, PermissionsAndroid, Linking } from "react-native";
-import socketService from "../../../services/socket.service";
-import * as ImagePicker from "expo-image-picker";
 
 let bleManager: BleManager | null = null;
 
@@ -30,32 +35,93 @@ export const usePlantListViewModel = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState("");
+  const [filters, setFilters] = useState<FilterOptions>({
+    name: "",
+    especie: "",
+    phaseOfLife: "",
+  });
 
   const fetchPlants = useCallback(
-    async (pageNumber: number, isRefresh = false) => {
+    async (
+      pageNumber: number,
+      isRefresh = false,
+      activeFilters?: FilterOptions,
+    ) => {
       if (isRefresh) setLoading(true);
       else setLoadingMore(true);
       setError("");
 
-      try {
-        const response = await plantService.getPlants(pageNumber);
-        const newData = response?.data ?? [];
+      const currentFilters =
+        activeFilters !== undefined ? activeFilters : filters;
 
-        setPlants((prev) => (isRefresh ? newData : [...prev, ...newData]));
-        setHasMore(pageNumber < (response?.totalPages ?? 1));
-        setPage(pageNumber);
-      } catch (err: any) {
-        setError(
-          err?.response?.data?.message ??
-            "Falha silenciosa ao buscar sua lista de plantas.",
+      try {
+        const LIMIT = 10;
+
+        const paginatedLocal = await PlantRepository.getFiltered(
+          pageNumber,
+          LIMIT,
+          currentFilters,
         );
+
+        setPlants((prev) => {
+          if (isRefresh) return paginatedLocal;
+          const existingIds = new Set(prev.map((p) => p.id));
+          const unique = paginatedLocal.filter((p) => !existingIds.has(p.id));
+          return [...prev, ...unique];
+        });
+
+        setHasMore(paginatedLocal.length === LIMIT);
+        setPage(pageNumber);
+
+        const netInfo = await NetInfo.fetch();
+
+        if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
+          const response = await plantService.getPlants({
+            page: pageNumber,
+            limit: LIMIT,
+            ...currentFilters,
+          });
+
+          const newData = response?.data ?? [];
+
+          if (newData.length > 0) {
+            try {
+              await PlantRepository.upsert(newData);
+            } catch (dbErr) {
+              console.error("[CACHE ERROR] Falha ao salvar lista:", dbErr);
+            }
+          }
+
+          setPlants((prev) => {
+            if (isRefresh) return newData;
+            const existingIds = new Set(prev.map((p) => p.id));
+            const unique = newData.filter((p) => !existingIds.has(p.id));
+            return [...prev, ...unique];
+          });
+
+          setHasMore(pageNumber < (response?.totalPages ?? 1));
+        }
+      } catch (err: any) {
+        if (err.message === "OFFLINE_MODE" || err.code === "ERR_NETWORK") {
+          console.log("[DEBUG] Interceptado modo offline na listagem.");
+        } else {
+          setError(
+            err?.response?.data?.message ??
+              "Falha silenciosa ao sincronizar sua lista com a nuvem.",
+          );
+        }
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [],
+    [filters],
   );
+
+  const applyFilters = (newFilters: FilterOptions) => {
+    setFilters(newFilters);
+    fetchPlants(1, true, newFilters);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -75,6 +141,8 @@ export const usePlantListViewModel = () => {
     loadMore,
     refresh: () => fetchPlants(1, true),
     clearError: () => setError(""),
+    filters,
+    applyFilters,
   };
 };
 
@@ -95,25 +163,75 @@ export const usePlantDashboardViewModel = (plantId: string) => {
       setError("");
 
       try {
-        if (isRefresh) {
-          const plantData = await plantService.getPlantById(plantId);
-          setPlant(plantData ?? null);
-        }
-        const readingsResponse = await plantService.getPlantReadings(
+        const LIMIT = 10;
+
+        const localPlants = await PlantRepository.getAll();
+        const localPlant = localPlants.find((p) => p.id === plantId);
+        if (localPlant) setPlant(localPlant);
+
+        const paginatedLocal = await ReadingRepository.getPaginatedByPlantId(
           plantId,
           pageNum,
-          10,
+          LIMIT,
         );
-        const newData = readingsResponse?.data ?? [];
 
-        setReadings((prev) => (isRefresh ? newData : [...prev, ...newData]));
-        setHasMore(pageNum < (readingsResponse?.totalPages ?? 1));
+        setReadings((prev) => {
+          if (isRefresh) return paginatedLocal;
+          const existingIds = new Set(prev.map((r) => r.id));
+          const unique = paginatedLocal.filter((r) => !existingIds.has(r.id));
+          return [...prev, ...unique];
+        });
+
+        setHasMore(paginatedLocal.length === LIMIT);
         setPage(pageNum);
+
+        const netInfo = await NetInfo.fetch();
+
+        if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
+          let latestPlant: Plant | null = null;
+
+          if (isRefresh) {
+            latestPlant = await plantService.getPlantById(plantId);
+            setPlant(latestPlant ?? null);
+          }
+
+          const readingsResponse = await plantService.getPlantReadings(
+            plantId,
+            pageNum,
+            LIMIT,
+          );
+          const newData = readingsResponse?.data ?? [];
+
+          if (newData.length > 0) {
+            try {
+              const plantToSave = latestPlant || localPlant;
+              if (plantToSave) {
+                await PlantRepository.upsert([plantToSave]);
+              }
+              await ReadingRepository.upsert(newData);
+            } catch (dbErr) {
+              console.error("[CACHE ERROR] Integridade FK falhou:", dbErr);
+            }
+          }
+
+          setReadings((prev) => {
+            if (isRefresh) return newData;
+            const existingIds = new Set(prev.map((r) => r.id));
+            const uniqueNewData = newData.filter((r) => !existingIds.has(r.id));
+            return [...prev, ...uniqueNewData];
+          });
+
+          setHasMore(pageNum < (readingsResponse?.totalPages ?? 1));
+        }
       } catch (err: any) {
-        setError(
-          err?.response?.data?.message ??
-            "Não foi possível carregar os dados do sensor.",
-        );
+        if (err.message === "OFFLINE_MODE" || err.code === "ERR_NETWORK") {
+          console.log("[DEBUG] Interceptado modo offline no Dashboard.");
+        } else {
+          setError(
+            err?.response?.data?.message ??
+              "Não foi possível sincronizar os dados do sensor.",
+          );
+        }
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -254,6 +372,18 @@ export const useAddPlantViewModel = () => {
     if (!validateFields()) {
       setError("Verifique os campos destacados.");
       throw new Error("Validation Failed");
+    }
+
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
     }
 
     setSaving(true);
@@ -417,6 +547,18 @@ export const useEditPlantViewModel = (initialPlant: Plant | null) => {
       throw new Error("Validation Failed");
     }
 
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     setSaving(true);
     try {
       await plantService.updatePlant(
@@ -494,6 +636,19 @@ export const useManualControlViewModel = (
   const updateInterval = async () => {
     if (!plantId) return;
     clearMessages();
+
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     setLoadingAction("interval");
 
     const intervalNumber = Number(interval);
@@ -521,6 +676,19 @@ export const useManualControlViewModel = (
 
   const forceReading = async () => {
     if (!plantId) return;
+
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     clearMessages();
     setLoadingAction("force");
 
@@ -814,22 +982,49 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
       };
       const encodedPayload = base64.encode(JSON.stringify(payloadObj));
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       await targetDevice.writeCharacteristicWithoutResponseForService(
         "4fa2c001-1234-4b2a-bf36-542194689400",
         "4fa2c002-1234-4b2a-bf36-542194689400",
         encodedPayload,
       );
 
+      let isWifiConnected = false;
+      let attempts = 0;
+
+      while (attempts < 15) {
+        await new Promise((res) => setTimeout(res, 1500));
+
+        const char = await targetDevice.readCharacteristicForService(
+          "4fa2c001-1234-4b2a-bf36-542194689400",
+          "4fa2c003-1234-4b2a-bf36-542194689400",
+        );
+
+        const status = base64.decode(char.value);
+
+        if (status === "WIFI_OK") {
+          isWifiConnected = true;
+          break;
+        } else if (status === "WIFI_FAIL") {
+          throw new Error(
+            "O hardware não conseguiu conectar ao Wi-Fi. Verifique a senha e o sinal (Apenas redes 2.4GHz são suportadas).",
+          );
+        }
+
+        attempts++;
+      }
+
+      if (!isWifiConnected) {
+        throw new Error(
+          "Tempo limite excedido. O hardware demorou demais para responder ao teste de Wi-Fi.",
+        );
+      }
+
       await plantService.connectESP32(plantId, {
         macAddress: targetDevice.id,
         firmwareVersion: "v1.0.0",
       });
 
-      setSuccess(
-        "Hardware provisionado! O ESP32 está reiniciando e se conectando ao Wi-Fi.",
-      );
+      setSuccess("Hardware provisionado com sucesso! O módulo já está online.");
       return true;
     } catch (err: any) {
       setError(

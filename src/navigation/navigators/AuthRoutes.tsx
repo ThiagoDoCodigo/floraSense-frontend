@@ -7,6 +7,7 @@ import LoginScreen from "../../features/auth/screens/LoginScreen";
 import RegisterScreen from "../../features/auth/screens/RegisterScreen";
 import RecoverScreen from "../../features/auth/screens/RecoverScreen";
 import OnboardingScreen from "../../features/onboarding/screens/OnboardingScreen";
+import ResetPasswordScreen from "../../features/auth/screens/ResetPasswordScreen";
 
 const AuthStack = createStackNavigator();
 
@@ -31,6 +32,10 @@ export function AuthRoutes() {
       <AuthStack.Screen
         name="Recover"
         component={WithMainLayout(RecoverScreen)}
+      />
+      <AuthStack.Screen
+        name="ResetPassword"
+        component={WithMainLayout(ResetPasswordScreen)}
       />
     </AuthStack.Navigator>
   );

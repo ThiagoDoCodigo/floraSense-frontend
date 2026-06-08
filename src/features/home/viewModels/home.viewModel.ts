@@ -8,6 +8,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import socketService from "../../../services/socket.service";
+import NetInfo from "@react-native-community/netinfo";
+import { ReadingRepository } from "../../../database/repositories/reading.repository";
+import { PlantRepository } from "../../../database/repositories/plant.repository";
 
 export interface DashboardViewModelReturn {
   user: AuthUserResponseDTO | null;
@@ -126,7 +129,12 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
         }
       }
 
-      setAlerts((prev) => [alertData, ...prev]);
+      setAlerts((prev) => {
+        const exists = prev.some((a) => a.id === alertData.id);
+        if (exists) return prev;
+        return [alertData, ...prev];
+      });
+
       setSummary((prev) =>
         prev
           ? { ...prev, plantsInAttention: prev.plantsInAttention + 1 }
@@ -148,16 +156,53 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
       setError("");
 
       try {
-        const [indicators, urgentData] = await Promise.all([
-          dashboardService.getIndicators(),
-          dashboardService.getUrgentAlerts(1, 1),
-        ]);
-        setSummary(indicators);
-        setAlerts(urgentData.data);
+        const LIMIT_HOME = 1;
+
+        const [localAlerts, totalPlantsCount, urgentAlertsCount, metrics] =
+          await Promise.all([
+            ReadingRepository.getPaginatedUrgentAlerts(1, LIMIT_HOME),
+            PlantRepository.countAll(),
+            ReadingRepository.countUrgentAlerts(),
+            ReadingRepository.getAverageMetrics(),
+          ]);
+
+        setAlerts(localAlerts);
+        setSummary({
+          totalPlants: totalPlantsCount,
+          plantsInAttention: urgentAlertsCount,
+          averageSoilMoisture: metrics.avgMoisture,
+          averageTemperature: metrics.avgTemp,
+        });
+
+        const netInfo = await NetInfo.fetch();
+
+        if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
+          const [indicators, urgentData] = await Promise.all([
+            dashboardService.getIndicators(),
+            dashboardService.getUrgentAlerts(1, LIMIT_HOME),
+          ]);
+
+          if (urgentData.data.length > 0) {
+            try {
+              await ReadingRepository.upsert(urgentData.data as any);
+            } catch (dbErr) {
+              console.log(
+                "[CACHE INFO] Ignorando alerta local: planta ainda não sincronizada pelo serviço principal.",
+              );
+            }
+          }
+
+          setSummary(indicators);
+          setAlerts(urgentData.data);
+        }
       } catch (err: any) {
-        setError(
-          err.response?.data?.message || "Erro de conexão com o servidor.",
-        );
+        if (err.message === "OFFLINE_MODE" || err.code === "ERR_NETWORK") {
+          console.log("[DEBUG] Interceptado modo offline na Home.");
+        } else {
+          setError(
+            err.response?.data?.message || "Erro de conexão com o servidor.",
+          );
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -176,10 +221,29 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
     setIsModalVisible(true);
     setLoadingModal(true);
     setModalPage(1);
+    const LIMIT = 5;
+
     try {
-      const res = await dashboardService.getUrgentAlerts(1, 5);
-      setModalAlerts(res.data);
-      setHasMoreModal(res.page < res.totalPages);
+      const paginatedLocal = await ReadingRepository.getPaginatedUrgentAlerts(
+        1,
+        LIMIT,
+      );
+      setModalAlerts(paginatedLocal);
+      setHasMoreModal(paginatedLocal.length === LIMIT);
+
+      const netInfo = await NetInfo.fetch();
+      if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
+        const res = await dashboardService.getUrgentAlerts(1, LIMIT);
+
+        if (res.data.length > 0) {
+          try {
+            await ReadingRepository.upsert(res.data as any);
+          } catch (e) {}
+        }
+
+        setModalAlerts(res.data);
+        setHasMoreModal(res.page < res.totalPages);
+      }
     } catch (err) {
       console.error("Erro ao carregar modal:", err);
     } finally {
@@ -190,12 +254,41 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
   const loadMoreAlerts = async (): Promise<void> => {
     if (!hasMoreModal || loadingModal) return;
     setLoadingModal(true);
+    const nextPage = modalPage + 1;
+    const LIMIT = 5;
+
     try {
-      const nextPage = modalPage + 1;
-      const res = await dashboardService.getUrgentAlerts(nextPage, 5);
-      setModalAlerts((prev) => [...prev, ...res.data]);
+      const netInfo = await NetInfo.fetch();
+
+      const paginatedLocal = await ReadingRepository.getPaginatedUrgentAlerts(
+        nextPage,
+        LIMIT,
+      );
+
+      setModalAlerts((prev) => {
+        const existingIds = new Set(prev.map((a) => a.id));
+        const uniques = paginatedLocal.filter((a) => !existingIds.has(a.id));
+        return [...prev, ...uniques];
+      });
       setModalPage(nextPage);
-      setHasMoreModal(res.page < res.totalPages);
+      setHasMoreModal(paginatedLocal.length === LIMIT);
+
+      if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
+        const res = await dashboardService.getUrgentAlerts(nextPage, LIMIT);
+
+        if (res.data.length > 0) {
+          try {
+            await ReadingRepository.upsert(res.data as any);
+          } catch (e) {}
+        }
+
+        setModalAlerts((prev) => {
+          const existingIds = new Set(prev.map((a) => a.id));
+          const uniques = res.data.filter((a) => !existingIds.has(a.id));
+          return [...prev, ...uniques];
+        });
+        setHasMoreModal(res.page < res.totalPages);
+      }
     } catch (err) {
       console.error("Erro ao paginar alertas:", err);
     } finally {
@@ -203,9 +296,22 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
     }
   };
 
+  const clearError = useCallback(() => setError(""), []);
+
   const handleMarkAsRead = async (readingId: string): Promise<boolean> => {
+    clearError();
     try {
+      const netInfo = await NetInfo.fetch();
+
+      if (!netInfo.isConnected || netInfo.isInternetReachable === false) {
+        console.log(
+          "[OFFLINE] Pulando marcação de lido na API, apenas permitindo navegação.",
+        );
+        return true;
+      }
+
       await dashboardService.markAsRead(readingId);
+
       setAlerts((prev) => prev.filter((a) => a.id !== readingId));
       setModalAlerts((prev) => prev.filter((a) => a.id !== readingId));
       setSummary((prev) =>
@@ -216,9 +322,10 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
             }
           : prev,
       );
+
       return true;
     } catch (err) {
-      setError("Falha ao marcar alerta como lido.");
+      setError("Falha ao marcar alerta como lido no servidor.");
       return false;
     }
   };
@@ -235,7 +342,7 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
     loadingModal,
     setIsModalVisible,
     onRefresh: () => loadDashboardData(true),
-    clearError: () => setError(""),
+    clearError,
     openAllAlerts,
     loadMoreAlerts,
     handleMarkAsRead,

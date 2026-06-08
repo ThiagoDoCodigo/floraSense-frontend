@@ -9,6 +9,7 @@ import type {
   LoginRequestDTO,
   AuthResponseDTO,
   PublicCreateUserDTO,
+  ResetPasswordRequestDTO,
 } from "../models/auth.model";
 
 class AuthService {
@@ -41,17 +42,6 @@ class AuthService {
     return await this.login({ email: data.email, password: data.password });
   }
 
-  async recoverPassword(email: string): Promise<{ message: string }> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (!email) reject(new Error("Email é obrigatório"));
-        resolve({
-          message: "Se o e-mail existir, você receberá um link de recuperação.",
-        });
-      }, 1000);
-    });
-  }
-
   async logout(): Promise<void> {
     await AsyncStorage.multiRemove([
       STORAGE_KEYS.ACCESS_TOKEN,
@@ -71,6 +61,20 @@ class AuthService {
     }
 
     return null;
+  }
+
+  async recoverPassword(email: string): Promise<{ message: string }> {
+    const response = await floraSenseApi.post("/users/forgot-password", {
+      email,
+    });
+    return response.data;
+  }
+
+  async resetPassword(
+    data: ResetPasswordRequestDTO,
+  ): Promise<{ message: string }> {
+    const response = await floraSenseApi.post("/users/reset-password", data);
+    return response.data;
   }
 }
 

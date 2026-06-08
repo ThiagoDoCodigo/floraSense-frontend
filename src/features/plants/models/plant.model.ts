@@ -61,6 +61,7 @@ export interface SensorReading {
   isRead: boolean;
   parametersIdeas: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -85,3 +86,9 @@ export interface ConnectDeviceDTO {
   macAddress: string;
   firmwareVersion?: string;
 }
+
+export type FilterOptions = {
+  name?: string;
+  especie?: string;
+  phaseOfLife?: PlantPhaseEnum | "";
+};
