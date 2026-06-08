@@ -1,12 +1,14 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import authService from "../services/auth.service";
+import NetInfo from "@react-native-community/netinfo";
 
 interface AuthFormErrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
   name?: string;
+  code?: string;
 }
 
 export const useAuthViewModel = () => {
@@ -16,6 +18,7 @@ export const useAuthViewModel = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [code, setCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [globalError, setGlobalError] = useState("");
@@ -41,6 +44,18 @@ export const useAuthViewModel = () => {
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       throw errors;
+    }
+
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setGlobalError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
     }
 
     setIsProcessing(true);
@@ -80,6 +95,18 @@ export const useAuthViewModel = () => {
       throw errors;
     }
 
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setGlobalError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     setIsProcessing(true);
     try {
       await signUp({ name: name.trim(), email: email.trim(), password });
@@ -94,9 +121,22 @@ export const useAuthViewModel = () => {
 
   const performRecover = async (): Promise<boolean> => {
     clearMessages();
+    const errors: AuthFormErrors = {};
+
     if (!email.trim() || !isValidEmail(email)) {
       setFieldErrors({ email: "Insira um e-mail válido para recuperação." });
-      return false;
+      throw errors;
+    }
+
+    const netInfo = await NetInfo.fetch();
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setGlobalError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
     }
 
     setIsProcessing(true);
@@ -105,8 +145,64 @@ export const useAuthViewModel = () => {
       setGlobalSuccess(res.message);
       return true;
     } catch (err: any) {
-      setGlobalError(err.message || "Erro ao solicitar recuperação.");
-      return false;
+      setGlobalError(
+        err.response?.data?.message ||
+          err.message ||
+          "Erro ao solicitar recuperação.",
+      );
+      throw err;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const performResetPassword = async (): Promise<boolean> => {
+    clearMessages();
+    const errors: AuthFormErrors = {};
+
+    if (!email.trim() || !isValidEmail(email))
+      errors.email = "E-mail inválido.";
+    if (!code.trim() || code.length !== 6)
+      errors.code = "O código deve ter exatos 6 dígitos.";
+    if (!password || password.length < 6)
+      errors.password = "Mínimo de 6 caracteres.";
+    if (!confirmPassword) {
+      errors.confirmPassword = "Confirme sua nova senha.";
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = "As senhas não coincidem.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      throw errors;
+    }
+
+    const netInfo = await NetInfo.fetch();
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setGlobalError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
+    setIsProcessing(true);
+    try {
+      const res = await authService.resetPassword({
+        email: email.trim(),
+        code: code.trim(),
+        newPassword: password,
+      });
+      setGlobalSuccess(res.message);
+      return true;
+    } catch (err: any) {
+      setGlobalError(
+        err.response?.data?.message ||
+          "Falha ao redefinir a senha. O código pode ser inválido ou expirado.",
+      );
+      throw err;
     } finally {
       setIsProcessing(false);
     }
@@ -121,6 +217,8 @@ export const useAuthViewModel = () => {
     setPassword,
     confirmPassword,
     setConfirmPassword,
+    code,
+    setCode,
     isProcessing,
     globalError,
     globalSuccess,
@@ -128,6 +226,7 @@ export const useAuthViewModel = () => {
     performLogin,
     performRegister,
     performRecover,
+    performResetPassword,
     clearMessages,
   };
 };

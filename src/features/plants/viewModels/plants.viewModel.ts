@@ -19,6 +19,7 @@ import {
   EnvironmentTypeEnum,
   SunlightExposureEnum,
   SubstrateTypeEnum,
+  FilterOptions,
 } from "../models/plant.model";
 
 let bleManager: BleManager | null = null;
@@ -34,20 +35,33 @@ export const usePlantListViewModel = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState("");
+  const [filters, setFilters] = useState<FilterOptions>({
+    name: "",
+    especie: "",
+    phaseOfLife: "",
+  });
 
   const fetchPlants = useCallback(
-    async (pageNumber: number, isRefresh = false) => {
+    async (
+      pageNumber: number,
+      isRefresh = false,
+      activeFilters?: FilterOptions,
+    ) => {
       if (isRefresh) setLoading(true);
       else setLoadingMore(true);
       setError("");
 
+      const currentFilters =
+        activeFilters !== undefined ? activeFilters : filters;
+
       try {
         const LIMIT = 10;
 
-        const localPlants = await PlantRepository.getAll();
-        const startIndex = (pageNumber - 1) * LIMIT;
-        const endIndex = startIndex + LIMIT;
-        const paginatedLocal = localPlants.slice(startIndex, endIndex);
+        const paginatedLocal = await PlantRepository.getFiltered(
+          pageNumber,
+          LIMIT,
+          currentFilters,
+        );
 
         setPlants((prev) => {
           if (isRefresh) return paginatedLocal;
@@ -55,13 +69,19 @@ export const usePlantListViewModel = () => {
           const unique = paginatedLocal.filter((p) => !existingIds.has(p.id));
           return [...prev, ...unique];
         });
-        setHasMore(localPlants.length > endIndex);
+
+        setHasMore(paginatedLocal.length === LIMIT);
         setPage(pageNumber);
 
         const netInfo = await NetInfo.fetch();
 
         if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
-          const response = await plantService.getPlants(pageNumber, LIMIT);
+          const response = await plantService.getPlants({
+            page: pageNumber,
+            limit: LIMIT,
+            ...currentFilters,
+          });
+
           const newData = response?.data ?? [];
 
           if (newData.length > 0) {
@@ -78,6 +98,7 @@ export const usePlantListViewModel = () => {
             const unique = newData.filter((p) => !existingIds.has(p.id));
             return [...prev, ...unique];
           });
+
           setHasMore(pageNumber < (response?.totalPages ?? 1));
         }
       } catch (err: any) {
@@ -94,8 +115,13 @@ export const usePlantListViewModel = () => {
         setLoadingMore(false);
       }
     },
-    [],
+    [filters],
   );
+
+  const applyFilters = (newFilters: FilterOptions) => {
+    setFilters(newFilters);
+    fetchPlants(1, true, newFilters);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -115,6 +141,8 @@ export const usePlantListViewModel = () => {
     loadMore,
     refresh: () => fetchPlants(1, true),
     clearError: () => setError(""),
+    filters,
+    applyFilters,
   };
 };
 
@@ -141,11 +169,11 @@ export const usePlantDashboardViewModel = (plantId: string) => {
         const localPlant = localPlants.find((p) => p.id === plantId);
         if (localPlant) setPlant(localPlant);
 
-        const localReadings =
-          await ReadingRepository.getReadingsByPlantId(plantId);
-        const startIndex = (pageNum - 1) * LIMIT;
-        const endIndex = startIndex + LIMIT;
-        const paginatedLocal = localReadings.slice(startIndex, endIndex);
+        const paginatedLocal = await ReadingRepository.getPaginatedByPlantId(
+          plantId,
+          pageNum,
+          LIMIT,
+        );
 
         setReadings((prev) => {
           if (isRefresh) return paginatedLocal;
@@ -153,7 +181,8 @@ export const usePlantDashboardViewModel = (plantId: string) => {
           const unique = paginatedLocal.filter((r) => !existingIds.has(r.id));
           return [...prev, ...unique];
         });
-        setHasMore(localReadings.length > endIndex);
+
+        setHasMore(paginatedLocal.length === LIMIT);
         setPage(pageNum);
 
         const netInfo = await NetInfo.fetch();
@@ -345,6 +374,18 @@ export const useAddPlantViewModel = () => {
       throw new Error("Validation Failed");
     }
 
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     setSaving(true);
     try {
       await plantService.addPlant(
@@ -506,6 +547,18 @@ export const useEditPlantViewModel = (initialPlant: Plant | null) => {
       throw new Error("Validation Failed");
     }
 
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     setSaving(true);
     try {
       await plantService.updatePlant(
@@ -583,6 +636,19 @@ export const useManualControlViewModel = (
   const updateInterval = async () => {
     if (!plantId) return;
     clearMessages();
+
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     setLoadingAction("interval");
 
     const intervalNumber = Number(interval);
@@ -610,6 +676,19 @@ export const useManualControlViewModel = (
 
   const forceReading = async () => {
     if (!plantId) return;
+
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     clearMessages();
     setLoadingAction("force");
 
@@ -903,22 +982,49 @@ export const useBluetoothSetupViewModel = (plantId: string) => {
       };
       const encodedPayload = base64.encode(JSON.stringify(payloadObj));
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       await targetDevice.writeCharacteristicWithoutResponseForService(
         "4fa2c001-1234-4b2a-bf36-542194689400",
         "4fa2c002-1234-4b2a-bf36-542194689400",
         encodedPayload,
       );
 
+      let isWifiConnected = false;
+      let attempts = 0;
+
+      while (attempts < 15) {
+        await new Promise((res) => setTimeout(res, 1500));
+
+        const char = await targetDevice.readCharacteristicForService(
+          "4fa2c001-1234-4b2a-bf36-542194689400",
+          "4fa2c003-1234-4b2a-bf36-542194689400",
+        );
+
+        const status = base64.decode(char.value);
+
+        if (status === "WIFI_OK") {
+          isWifiConnected = true;
+          break;
+        } else if (status === "WIFI_FAIL") {
+          throw new Error(
+            "O hardware não conseguiu conectar ao Wi-Fi. Verifique a senha e o sinal (Apenas redes 2.4GHz são suportadas).",
+          );
+        }
+
+        attempts++;
+      }
+
+      if (!isWifiConnected) {
+        throw new Error(
+          "Tempo limite excedido. O hardware demorou demais para responder ao teste de Wi-Fi.",
+        );
+      }
+
       await plantService.connectESP32(plantId, {
         macAddress: targetDevice.id,
         firmwareVersion: "v1.0.0",
       });
 
-      setSuccess(
-        "Hardware provisionado! O ESP32 está reiniciando e se conectando ao Wi-Fi.",
-      );
+      setSuccess("Hardware provisionado com sucesso! O módulo já está online.");
       return true;
     } catch (err: any) {
       setError(

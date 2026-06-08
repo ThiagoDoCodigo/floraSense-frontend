@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Image,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import {
@@ -193,6 +194,7 @@ export default function PlantDetailScreen() {
               navigation.navigate("ManualControl", {
                 plantId,
                 delayReading: plant.delayReading,
+                isConnected: plant.isConnected,
               })
             }
           >
@@ -564,6 +566,13 @@ export default function PlantDetailScreen() {
             />
           ) : null
         }
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={refresh}
+            colors={[colors.primary.main]}
+          />
+        }
       />
     </View>
   );
@@ -634,7 +643,7 @@ const styles = StyleSheet.create({
   liveStatusContainer: {
     backgroundColor: colors.surface,
     borderRadius: 24,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 32,

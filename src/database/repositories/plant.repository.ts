@@ -1,5 +1,6 @@
 import { getDBConnection } from "../connection";
 import { Plant } from "../../features/plants/models/plant.model";
+import { FilterOptions } from "../../features/plants/models/plant.model";
 
 export const PlantRepository = {
   async upsert(plants: Plant[]) {
@@ -69,6 +70,53 @@ export const PlantRepository = {
       "SELECT * FROM plants ORDER BY created_at DESC",
     );
     return rows.map((r) => ({ ...r, isConnected: Boolean(r.isConnected) }));
+  },
+
+  async getFiltered(
+    page: number,
+    limit: number,
+    filters?: FilterOptions,
+  ): Promise<Plant[]> {
+    const db = await getDBConnection();
+    if (!db) return [];
+
+    let query = "SELECT * FROM plants";
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (filters?.name) {
+      conditions.push("name LIKE ?");
+      params.push(`%${filters.name}%`);
+    }
+    if (filters?.especie) {
+      conditions.push("especie LIKE ?");
+      params.push(`%${filters.especie}%`);
+    }
+    if (filters?.phaseOfLife) {
+      conditions.push("phaseOfLife = ?");
+      params.push(filters.phaseOfLife);
+    }
+
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
+    }
+
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    params.push(limit);
+    params.push((page - 1) * limit);
+
+    const rows = await db.getAllAsync<any>(query, ...params);
+    return rows.map((r) => ({ ...r, isConnected: Boolean(r.isConnected) }));
+  },
+
+  async countAll(): Promise<number> {
+    const db = await getDBConnection();
+    if (!db) return 0;
+
+    const result = await db.getFirstAsync<{ total: number }>(
+      "SELECT COUNT(*) as total FROM plants",
+    );
+    return result?.total || 0;
   },
 
   async clear() {

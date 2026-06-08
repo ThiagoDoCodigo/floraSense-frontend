@@ -1,12 +1,13 @@
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { Clock, RefreshCw, RadioTower } from "lucide-react-native";
+import { Clock, RefreshCw, RadioTower, WifiOff } from "lucide-react-native";
 import {
   InputField,
   ActionButton,
   Typography,
   colors,
   AlertMessage,
+  Button,
 } from "react-native-th-components";
 import { useManualControlViewModel } from "../viewModels/plants.viewModel";
 import { InteractionManager, Platform } from "react-native";
@@ -16,7 +17,7 @@ import { LoadingIndicator } from "../../../components/LoadingIndicator";
 export default function ManualControlScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { plantId, delayReading } = route.params;
+  const { plantId, delayReading, isConnected } = route.params;
   const [isReady, setIsReady] = useState(false);
   const {
     interval,
@@ -59,6 +60,34 @@ export default function ManualControlScreen() {
     });
     return () => task.cancel();
   }, []);
+
+  if (!isConnected) {
+    return (
+      <View style={[styles.container, styles.offlineContainer]}>
+        <View style={styles.offlineIconContainer}>
+          <WifiOff size={42} color={colors.text.secondary} />
+        </View>
+        <Typography variant="title" style={styles.offlineTitle}>
+          Módulo Não Pareado
+        </Typography>
+        <Typography
+          variant="body"
+          color={colors.text.secondary}
+          style={[styles.offlineSubtitle, { marginBottom: 24 }]}
+        >
+          Essa planta ainda não possui um módulo FloraSense vinculado. Conecte
+          um novo módulo agora para começar a receber diagnósticos da sua
+          planta!
+        </Typography>
+
+        <Button
+          label="Parear Módulo FloraSense"
+          onPress={() => navigation.navigate("BluetoothSetup", { plantId })}
+          style={{ width: "100%" }}
+        />
+      </View>
+    );
+  }
 
   if (!isReady) {
     return (
@@ -164,4 +193,28 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  offlineContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  offlineIconContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  offlineTitle: {
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  offlineSubtitle: {
+    textAlign: "center",
+    lineHeight: 22,
+  },
 });

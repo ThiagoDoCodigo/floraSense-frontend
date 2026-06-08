@@ -96,6 +96,54 @@ export const ReadingRepository = {
     }));
   },
 
+  async getPaginatedByPlantId(
+    plantId: string,
+    page: number,
+    limit: number,
+  ): Promise<SensorReading[]> {
+    const db = await getDBConnection();
+    if (!db) return [];
+
+    const offset = (page - 1) * limit;
+
+    const rows = await db.getAllAsync<any>(
+      "SELECT * FROM sensor_readings WHERE plantId = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      [plantId, limit, offset],
+    );
+
+    return rows.map((r) => ({
+      ...r,
+      isUrgent: Boolean(r.isUrgent),
+      isRead: Boolean(r.isRead),
+    }));
+  },
+
+  async getPaginatedUrgentAlerts(page: number, limit: number): Promise<any[]> {
+    const db = await getDBConnection();
+    if (!db) return [];
+
+    const offset = (page - 1) * limit;
+
+    const rows = await db.getAllAsync<any>(
+      `
+      SELECT r.*, p.name as plantName, p.especie as plantEspecie 
+      FROM sensor_readings r 
+      LEFT JOIN plants p ON r.plantId = p.id 
+      WHERE r.isUrgent = 1 AND r.isRead = 0 
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `,
+      [limit, offset],
+    );
+
+    return rows.map((r) => ({
+      ...r,
+      isUrgent: Boolean(r.isUrgent),
+      isRead: Boolean(r.isRead),
+      plant: { id: r.plantId, name: r.plantName, especie: r.plantEspecie },
+    }));
+  },
+
   async getAverageMetrics(): Promise<{ avgMoisture: number; avgTemp: number }> {
     const db = await getDBConnection();
     if (!db) return { avgMoisture: 0, avgTemp: 0 };
@@ -113,6 +161,16 @@ export const ReadingRepository = {
         : 0,
       avgTemp: result?.avgTemp ? Number(result.avgTemp.toFixed(1)) : 0,
     };
+  },
+
+  async countUrgentAlerts(): Promise<number> {
+    const db = await getDBConnection();
+    if (!db) return 0;
+
+    const result = await db.getFirstAsync<{ total: number }>(
+      "SELECT COUNT(*) as total FROM sensor_readings WHERE isUrgent = 1 AND isRead = 0",
+    );
+    return result?.total || 0;
   },
 
   async clear() {

@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
-import { Appearance, ColorSchemeName } from "react-native";
+import { Appearance } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import profileService from "../services/profile.service";
 import { useAuth } from "../../../contexts/AuthContext";
+import {
+  configureTheme,
+  ThemeMode,
+  ThemeFamily,
+} from "react-native-th-components";
+import NetInfo from "@react-native-community/netinfo";
 
 export const useProfileViewModel = () => {
   const { user, updateUserProfile, signOut } = useAuth();
@@ -19,30 +25,8 @@ export const useProfileViewModel = () => {
   const [urgentAlertsOnly, setUrgentAlertsOnly] = useState(false);
   const appVersion = "1.0.0";
 
-  const toggleNotifications = () => {
-    setNotificationsEnabled((prev) => !prev);
-  };
-
-  const toggleUrgentAlertsOnly = () => {
-    setUrgentAlertsOnly((prev) => !prev);
-  };
-
-  const [themePreference, setThemePreference] = useState<"light" | "dark" | "auto">("auto");
-
-  useEffect(() => {
-    AsyncStorage.getItem("@theme_preference").then((savedTheme) => {
-      if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "auto") {
-        setThemePreference(savedTheme);
-        Appearance.setColorScheme(savedTheme === "auto" ? null : savedTheme);
-      }
-    });
-  }, []);
-
-  const changeTheme = async (pref: "light" | "dark" | "auto") => {
-    setThemePreference(pref);
-    Appearance.setColorScheme(pref === "auto" ? null : pref);
-    await AsyncStorage.setItem("@theme_preference", pref);
-  };
+  const [themePreference, setThemePreference] = useState<ThemeMode>("auto");
+  const [themeFamily, setThemeFamily] = useState<ThemeFamily>("default");
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -53,6 +37,41 @@ export const useProfileViewModel = () => {
     newPassword?: string;
     confirmNewPassword?: string;
   }>({});
+
+  useEffect(() => {
+    async function fetchPreferences() {
+      const savedTheme = await AsyncStorage.getItem("@theme_preference");
+      const savedFamily = await AsyncStorage.getItem("@theme_family");
+
+      if (savedTheme) {
+        setThemePreference(savedTheme as ThemeMode);
+        Appearance.setColorScheme(
+          savedTheme === "auto" ? null : (savedTheme as "light" | "dark"),
+        );
+      }
+
+      if (savedFamily) {
+        setThemeFamily(savedFamily as ThemeFamily);
+      }
+    }
+    fetchPreferences();
+  }, []);
+
+  const changeTheme = async (pref: ThemeMode) => {
+    setThemePreference(pref);
+    Appearance.setColorScheme(pref === "auto" ? null : pref);
+    await AsyncStorage.setItem("@theme_preference", pref);
+    configureTheme({ themeName: pref, themeFamily });
+  };
+
+  const changeThemeFamily = async (family: ThemeFamily) => {
+    setThemeFamily(family);
+    await AsyncStorage.setItem("@theme_family", family);
+    configureTheme({ themeName: themePreference, themeFamily: family });
+  };
+
+  const toggleNotifications = () => setNotificationsEnabled((prev) => !prev);
+  const toggleUrgentAlertsOnly = () => setUrgentAlertsOnly((prev) => !prev);
 
   useEffect(() => {
     if (user) {
@@ -81,19 +100,26 @@ export const useProfileViewModel = () => {
     clearMessages();
     const errors: { name?: string; email?: string } = {};
 
-    if (!name || name.trim().length < 3) {
+    if (!name || name.trim().length < 3)
       errors.name = "Insira seu nome completo (mín. 3 letras).";
-    }
-
-    if (!email) {
-      errors.email = "O e-mail é obrigatório.";
-    } else if (!isValidEmail(email)) {
-      errors.email = "Formato de e-mail inválido.";
-    }
+    if (!email) errors.email = "O e-mail é obrigatório.";
+    else if (!isValidEmail(email)) errors.email = "Formato de e-mail inválido.";
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       throw new Error("Verifique os campos destacados.");
+    }
+
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
     }
 
     try {
@@ -102,7 +128,6 @@ export const useProfileViewModel = () => {
         email.trim(),
         avatarUrl,
       );
-
       if (updateUserProfile) {
         await updateUserProfile({
           name: updatedProfile.name,
@@ -110,7 +135,6 @@ export const useProfileViewModel = () => {
           avatarUrl: updatedProfile.avatarUrl,
         });
       }
-
       setSuccess("Perfil atualizado com sucesso!");
     } catch (err: any) {
       const apiError =
@@ -128,33 +152,38 @@ export const useProfileViewModel = () => {
       confirmNewPassword?: string;
     } = {};
 
-    if (!currentPassword) {
-      errors.currentPassword = "Digite sua senha atual.";
-    }
-
-    if (!newPassword) {
-      errors.newPassword = "Digite uma nova senha.";
-    } else if (newPassword.length < 6) {
+    if (!currentPassword) errors.currentPassword = "Digite sua senha atual.";
+    if (!newPassword) errors.newPassword = "Digite uma nova senha.";
+    else if (newPassword.length < 6)
       errors.newPassword = "A nova senha deve ter pelo menos 6 caracteres.";
-    } else if (newPassword === currentPassword) {
+    else if (newPassword === currentPassword)
       errors.newPassword = "A nova senha não pode ser igual à atual.";
-    }
 
-    if (!confirmNewPassword) {
+    if (!confirmNewPassword)
       errors.confirmNewPassword = "Confirme sua nova senha.";
-    } else if (newPassword !== confirmNewPassword) {
+    else if (newPassword !== confirmNewPassword)
       errors.confirmNewPassword = "As senhas não coincidem.";
-    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       throw new Error("Verifique os campos destacados.");
     }
 
+    const netInfo = await NetInfo.fetch();
+
+    if (
+      netInfo.isConnected === false ||
+      netInfo.isInternetReachable === false
+    ) {
+      setError(
+        "Sem conexão com a internet. Verifique sua conexão e tente novamente.",
+      );
+      throw new Error("No Internet Connection");
+    }
+
     try {
       await profileService.changePassword(currentPassword, newPassword);
       setSuccess("Senha alterada com segurança!");
-
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
@@ -209,9 +238,11 @@ export const useProfileViewModel = () => {
       urgentAlertsOnly,
       appVersion,
       themePreference,
+      themeFamily,
     },
     toggleNotifications,
     toggleUrgentAlertsOnly,
     changeTheme,
+    changeThemeFamily,
   };
 };

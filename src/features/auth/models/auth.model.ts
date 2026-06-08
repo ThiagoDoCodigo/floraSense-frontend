@@ -33,3 +33,9 @@ export type PublicCreateUserDTO = {
   email: string;
   password: string;
 };
+
+export type ResetPasswordRequestDTO = {
+  email: string;
+  code: string;
+  newPassword: string;
+};

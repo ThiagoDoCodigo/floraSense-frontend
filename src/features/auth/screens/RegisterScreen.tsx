@@ -1,4 +1,10 @@
-import { View, StyleSheet, ScrollView } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  InteractionManager,
+  Platform,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { UserPlus, User, Mail, Lock } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,6 +18,8 @@ import {
   Button,
 } from "react-native-th-components";
 import { useAuthViewModel } from "../viewModel/auth.viewModel";
+import { useEffect, useState } from "react";
+import { LoadingIndicator } from "../../../components/LoadingIndicator";
 
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
@@ -30,6 +38,30 @@ export default function RegisterScreen() {
     performRegister,
     isProcessing,
   } = useAuthViewModel();
+
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      setIsReady(true);
+      return;
+    }
+
+    const task = InteractionManager.runAfterInteractions(() => {
+      setIsReady(true);
+    });
+    return () => task.cancel();
+  }, []);
+
+  if (!isReady) {
+    return (
+      <LoadingIndicator
+        message="Carregando..."
+        subMessage="Aguarde um momento"
+        fullScreen={true}
+      />
+    );
+  }
 
   const handleRegister = async () => {
     try {

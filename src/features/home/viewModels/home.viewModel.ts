@@ -156,16 +156,20 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
       setError("");
 
       try {
-        const [localAlerts, localPlants, metrics] = await Promise.all([
-          ReadingRepository.getUrgentAlerts(),
-          PlantRepository.getAll(),
-          ReadingRepository.getAverageMetrics(),
-        ]);
+        const LIMIT_HOME = 1;
 
-        setAlerts(localAlerts.slice(0, 1));
+        const [localAlerts, totalPlantsCount, urgentAlertsCount, metrics] =
+          await Promise.all([
+            ReadingRepository.getPaginatedUrgentAlerts(1, LIMIT_HOME),
+            PlantRepository.countAll(),
+            ReadingRepository.countUrgentAlerts(),
+            ReadingRepository.getAverageMetrics(),
+          ]);
+
+        setAlerts(localAlerts);
         setSummary({
-          totalPlants: localPlants.length,
-          plantsInAttention: localAlerts.length,
+          totalPlants: totalPlantsCount,
+          plantsInAttention: urgentAlertsCount,
           averageSoilMoisture: metrics.avgMoisture,
           averageTemperature: metrics.avgTemp,
         });
@@ -175,7 +179,7 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
         if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
           const [indicators, urgentData] = await Promise.all([
             dashboardService.getIndicators(),
-            dashboardService.getUrgentAlerts(1, 1),
+            dashboardService.getUrgentAlerts(1, LIMIT_HOME),
           ]);
 
           if (urgentData.data.length > 0) {
@@ -220,9 +224,12 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
     const LIMIT = 5;
 
     try {
-      const localAlerts = await ReadingRepository.getUrgentAlerts();
-      setModalAlerts(localAlerts.slice(0, LIMIT));
-      setHasMoreModal(localAlerts.length > LIMIT);
+      const paginatedLocal = await ReadingRepository.getPaginatedUrgentAlerts(
+        1,
+        LIMIT,
+      );
+      setModalAlerts(paginatedLocal);
+      setHasMoreModal(paginatedLocal.length === LIMIT);
 
       const netInfo = await NetInfo.fetch();
       if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
@@ -253,10 +260,10 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
     try {
       const netInfo = await NetInfo.fetch();
 
-      const localAlerts = await ReadingRepository.getUrgentAlerts();
-      const startIndex = (nextPage - 1) * LIMIT;
-      const endIndex = startIndex + LIMIT;
-      const paginatedLocal = localAlerts.slice(startIndex, endIndex);
+      const paginatedLocal = await ReadingRepository.getPaginatedUrgentAlerts(
+        nextPage,
+        LIMIT,
+      );
 
       setModalAlerts((prev) => {
         const existingIds = new Set(prev.map((a) => a.id));
@@ -264,7 +271,7 @@ export const useDashboardViewModel = (): DashboardViewModelReturn => {
         return [...prev, ...uniques];
       });
       setModalPage(nextPage);
-      setHasMoreModal(localAlerts.length > endIndex);
+      setHasMoreModal(paginatedLocal.length === LIMIT);
 
       if (netInfo.isConnected && netInfo.isInternetReachable !== false) {
         const res = await dashboardService.getUrgentAlerts(nextPage, LIMIT);

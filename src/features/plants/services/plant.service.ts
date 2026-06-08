@@ -7,12 +7,26 @@ import type {
 import { Platform } from "react-native";
 
 class PlantService {
-  async getPlants(
-    page: number,
-    limit: number = 10,
-  ): Promise<PaginatedResponse<Plant>> {
+  async getPlants(params: {
+    page: number;
+    limit?: number;
+    name?: string;
+    especie?: string;
+    phaseOfLife?: string;
+  }): Promise<PaginatedResponse<Plant>> {
+    const { page, limit = 10, name, especie, phaseOfLife } = params;
+
+    const queryParams = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+
+    if (name) queryParams.append("name", name);
+    if (especie) queryParams.append("especie", especie);
+    if (phaseOfLife) queryParams.append("phaseOfLife", phaseOfLife);
+
     const { data } = await floraSenseApi.get<PaginatedResponse<Plant>>(
-      `/plants?page=${page}&limit=${limit}`,
+      `/plants?${queryParams.toString()}`,
     );
     return data;
   }

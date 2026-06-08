@@ -86,3 +86,9 @@ export interface ConnectDeviceDTO {
   macAddress: string;
   firmwareVersion?: string;
 }
+
+export type FilterOptions = {
+  name?: string;
+  especie?: string;
+  phaseOfLife?: PlantPhaseEnum | "";
+};
