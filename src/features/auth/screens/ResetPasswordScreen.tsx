@@ -171,7 +171,7 @@ export default function ResetPasswordScreen() {
           />
           <Button
             variant="outline"
-            label="Voltar para o Início"
+            label="Cancelar e Voltar"
             onPress={() => navigation.navigate("Login")}
             disabled={isProcessing}
           />

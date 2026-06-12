@@ -50,6 +50,8 @@ export function PlantFilterModal({
     setName("");
     setEspecie("");
     setPhaseOfLife("");
+    onApply({});
+    onClose();
   };
 
   const handleApply = () => {
@@ -137,11 +139,7 @@ export function PlantFilterModal({
               onPress={handleClear}
               style={{ flex: 1, marginRight: 8 }}
             />
-            <Button
-              label="Aplicar Filtros"
-              onPress={handleApply}
-              style={{ flex: 2 }}
-            />
+            <Button label="Filtrar" onPress={handleApply} style={{ flex: 1 }} />
           </View>
         </View>
       </View>

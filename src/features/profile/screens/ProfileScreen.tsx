@@ -285,7 +285,10 @@ export default function ProfileScreen() {
 
             <View style={styles.settingRow}>
               <View
-                style={[styles.iconBox, { backgroundColor: colors.info.main }]}
+                style={[
+                  styles.iconBox,
+                  { backgroundColor: colors.primary.faded },
+                ]}
               >
                 <Moon size={20} color={colors.info.main} />
               </View>
@@ -520,7 +523,7 @@ export default function ProfileScreen() {
               <View
                 style={[
                   styles.menuIconBox,
-                  { backgroundColor: colors.info.main },
+                  { backgroundColor: colors.primary.faded },
                 ]}
               >
                 <ShieldCheck size={20} color={colors.info.main} />
