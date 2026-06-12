@@ -128,7 +128,7 @@ export default function RecoverScreen() {
           />
           <Button
             variant="primary"
-            label="Já tenho um código"
+            label="Tenho o Código"
             onPress={() =>
               navigation.navigate("ResetPassword", { defaultEmail: email })
             }

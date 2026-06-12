@@ -42,6 +42,9 @@ export const useProfileViewModel = () => {
     async function fetchPreferences() {
       const savedTheme = await AsyncStorage.getItem("@theme_preference");
       const savedFamily = await AsyncStorage.getItem("@theme_family");
+      const savedNotifications = await AsyncStorage.getItem(
+        "receiptNotifications",
+      );
 
       if (savedTheme) {
         setThemePreference(savedTheme as ThemeMode);
@@ -52,6 +55,12 @@ export const useProfileViewModel = () => {
 
       if (savedFamily) {
         setThemeFamily(savedFamily as ThemeFamily);
+      }
+
+      if (savedNotifications !== null) {
+        setNotificationsEnabled(savedNotifications === "true");
+      } else {
+        setNotificationsEnabled(true);
       }
     }
     fetchPreferences();
@@ -70,7 +79,15 @@ export const useProfileViewModel = () => {
     configureTheme({ themeName: themePreference, themeFamily: family });
   };
 
-  const toggleNotifications = () => setNotificationsEnabled((prev) => !prev);
+  const toggleNotifications = async () => {
+    setNotificationsEnabled((prev) => {
+      const newValue = !prev;
+      AsyncStorage.setItem("receiptNotifications", String(newValue)).catch(
+        console.error,
+      );
+      return newValue;
+    });
+  };
   const toggleUrgentAlertsOnly = () => setUrgentAlertsOnly((prev) => !prev);
 
   useEffect(() => {
