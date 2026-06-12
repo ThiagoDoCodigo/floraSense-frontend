@@ -244,7 +244,7 @@ export default function ProfileScreen() {
 
             <View style={styles.divider} />
 
-            <View style={styles.settingRow}>
+            {/* {<View style={styles.settingRow}>
               <View
                 style={[
                   styles.iconBox,
@@ -279,9 +279,7 @@ export default function ProfileScreen() {
                     : colors.text.muted
                 }
               />
-            </View>
-
-            <View style={styles.divider} />
+            </View>} */}
 
             <View style={styles.settingRow}>
               <View
