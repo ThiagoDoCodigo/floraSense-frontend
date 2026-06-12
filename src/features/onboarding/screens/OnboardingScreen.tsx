@@ -3,24 +3,39 @@ import {
   View,
   StyleSheet,
   FlatList,
-  Dimensions,
   TouchableOpacity,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withTiming,
 } from "react-native-reanimated";
-import {
-  Typography,
-  colors,
-} from "react-native-th-components";
+import { Typography, colors } from "react-native-th-components";
 import { useOnboardingViewModel } from "../viewModels/onboarding.viewModel";
 import type { OnboardingSlide } from "../models/onboarding.model";
 import { ChevronRight } from "lucide-react-native";
 
-const { width } = Dimensions.get("window");
+const PaginationDot = ({ isActive }: { isActive: boolean }) => {
+  const activeColor = colors.primary.main;
+  const inactiveColor = colors.primary.faded;
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      width: withTiming(isActive ? 24 : 8, { duration: 300 }),
+      backgroundColor: withTiming(isActive ? activeColor : inactiveColor, {
+        duration: 300,
+      }),
+    };
+  });
+
+  return <Animated.View style={[styles.dot, animatedStyle]} />;
+};
 
 export default function OnboardingScreen() {
+  const { width } = useWindowDimensions();
+  const slideWidth = width - 32;
+
   const {
     slides,
     currentIndex,
@@ -29,98 +44,112 @@ export default function OnboardingScreen() {
     viewConfig,
     handleNext,
     handleSkip,
-  } = useOnboardingViewModel();
+  } = useOnboardingViewModel(slideWidth);
 
   const renderItem = ({ item }: { item: OnboardingSlide }) => {
     return (
-      <View style={styles.slide}>
-        <View style={styles.iconContainer}>
-          <item.Icon size={80} color={colors.primary.main} />
+      <View style={[styles.slide, { width: slideWidth }]}>
+        <View style={styles.contentWrapper}>
+          <View style={styles.iconContainer}>
+            <item.Icon
+              size={56}
+              color={colors.primary.main}
+              strokeWidth={1.5}
+            />
+          </View>
+
+          <Typography
+            variant="h1"
+            color={colors.text.primary}
+            align="center"
+            style={styles.title}
+          >
+            {item.title}
+          </Typography>
+
+          <Typography
+            variant="body"
+            color={colors.text.secondary}
+            align="center"
+            style={styles.description}
+          >
+            {item.description}
+          </Typography>
         </View>
-        <Typography
-          variant="h1"
-          color={colors.text.primary}
-          align="center"
-          style={styles.title}
-        >
-          {item.title}
-        </Typography>
-        <Typography
-          variant="body"
-          color={colors.text.secondary}
-          align="center"
-          style={styles.description}
-        >
-          {item.description}
-        </Typography>
       </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.skipContainer}>
+      <View style={styles.header}>
         {currentIndex < slides.length - 1 ? (
-          <TouchableOpacity onPress={handleSkip}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleSkip}
+            style={styles.skipButton}
+          >
             <Typography variant="body" weight="bold" color={colors.text.muted}>
               Pular
             </Typography>
           </TouchableOpacity>
         ) : (
-          <View style={{ height: 24 }} />
+          <View style={styles.skipPlaceholder} />
         )}
       </View>
 
-      <FlatList
-        ref={slidesRef}
-        data={slides}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        pagingEnabled
-        bounces={false}
-        onViewableItemsChanged={viewableItemsChanged}
-        viewabilityConfig={viewConfig}
-        scrollEventThrottle={32}
-        getItemLayout={(data, index) => ({
-          length: width,
-          offset: width * index,
-          index,
-        })}
-      />
+      <View style={styles.listContainer}>
+        <FlatList
+          ref={slidesRef}
+          data={slides}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          onViewableItemsChanged={viewableItemsChanged}
+          viewabilityConfig={viewConfig}
+          scrollEventThrottle={32}
+          snapToInterval={slideWidth}
+          snapToAlignment="center"
+          decelerationRate="fast"
+          getItemLayout={(_, index) => ({
+            length: slideWidth,
+            offset: slideWidth * index,
+            index,
+          })}
+        />
+      </View>
 
       <View style={styles.footer}>
         <View style={styles.paginator}>
-          {slides.map((_, index) => {
-            const isActive = index === currentIndex;
-            return (
-              <Animated.View
-                key={index.toString()}
-                style={[
-                  styles.dot,
-                  isActive && styles.activeDot,
-                  { width: isActive ? 24 : 8 }, 
-                ]}
-              />
-            );
-          })}
+          {slides.map((_, index) => (
+            <PaginationDot key={index} isActive={index === currentIndex} />
+          ))}
         </View>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.nextButton}
-            activeOpacity={0.8}
-            onPress={handleNext}
+        <TouchableOpacity
+          style={styles.nextButton}
+          activeOpacity={0.8}
+          onPress={handleNext}
+        >
+          <Typography
+            weight="bold"
+            color={colors.text.inverse}
+            style={styles.nextButtonText}
           >
-            <Typography weight="bold" color={colors.text.inverse} style={{ fontSize: 15 }}>
-              {currentIndex === slides.length - 1 ? "Começar Agora" : "Próximo"}
-            </Typography>
-            {currentIndex < slides.length - 1 && (
-              <ChevronRight size={18} color={colors.text.inverse} style={{ marginLeft: 8 }} strokeWidth={2.5} />
-            )}
-          </TouchableOpacity>
-        </View>
+            {currentIndex === slides.length - 1 ? "Começar Agora" : "Próximo"}
+          </Typography>
+          {currentIndex < slides.length - 1 && (
+            <ChevronRight
+              size={20}
+              color={colors.text.inverse}
+              style={{ marginLeft: 4 }}
+              strokeWidth={2.5}
+            />
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -129,64 +158,87 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  skipContainer: {
-    paddingTop: 60,
-    paddingHorizontal: 24,
-    alignItems: "flex-end",
-    height: 100,
+  header: {
+    height: Platform.OS === "ios" ? 110 : 80,
+    paddingTop: Platform.OS === "ios" ? 60 : 30,
+    paddingHorizontal: 8,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  skipButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  skipPlaceholder: {
+    height: 36,
+  },
+  listContainer: {
+    flex: 1,
   },
   slide: {
-    width,
+    flex: 1,
     alignItems: "center",
-    paddingHorizontal: 32,
+    justifyContent: "center",
+  },
+  contentWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    width: "100%",
   },
   iconContainer: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: colors.primary.faded,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 40,
-    marginTop: 20,
+    marginBottom: 48,
+    borderWidth: 1.5,
+    borderColor: colors.primary.light,
   },
   title: {
     marginBottom: 16,
     lineHeight: 34,
+    paddingHorizontal: 8,
   },
   description: {
     lineHeight: 24,
+    paddingHorizontal: 8,
   },
   footer: {
-    paddingHorizontal: 32,
-    paddingBottom: 40,
-    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === "ios" ? 40 : 32,
   },
   paginator: {
     flexDirection: "row",
     justifyContent: "center",
+    alignItems: "center",
     marginBottom: 32,
+    height: 8,
   },
   dot: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary.faded,
     marginHorizontal: 4,
-  },
-  activeDot: {
-    backgroundColor: colors.primary.main,
-  },
-  buttonContainer: {
-    width: "100%",
   },
   nextButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 48,
+    height: 56,
     backgroundColor: colors.primary.main,
-    borderRadius: 12,
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: colors.primary.main,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  nextButtonText: {
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
 });
