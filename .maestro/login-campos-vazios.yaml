@@ -1,0 +1,7 @@
+appId: com.thiagodocodigo.florasense
+---
+- launchApp
+- tapOn: "Pular"
+- tapOn: "Entrar na Plataforma"
+- assertVisible: "O e-mail é obrigatório."
+- assertVisible: "A senha é obrigatória."

@@ -38,6 +38,7 @@ export function LoadingIndicator({
       <View style={styles.card}>
         <View style={styles.iconWrapper}>
           <ActivityIndicator
+            testID="loading-spinner"
             size="large"
             color={colors.primary.main}
             style={styles.spinner}

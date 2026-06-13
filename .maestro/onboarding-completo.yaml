@@ -1,0 +1,13 @@
+appId: com.thiagodocodigo.florasense
+---
+- launchApp
+- assertVisible: "Bem-vindo ao FloraSense!"
+- tapOn: "Próximo"
+- assertVisible: "Conexão Direta com a Terra"
+- tapOn: "Próximo"
+- assertVisible: "Seu Agrônomo de Bolso"
+- tapOn: "Próximo"
+- assertVisible: "Prontos para cultivar o futuro?"
+- assertVisible: "Começar Agora"
+- tapOn: "Começar Agora"
+- assertVisible: "Entrar na Plataforma"
